@@ -1,5 +1,5 @@
-// Last Call Invitational — Service Worker v4.6
-const CACHE = 'lci-v4.6';
+// Last Call Invitational — Service Worker v4.7
+const CACHE = 'lci-v4.7';
 const ASSETS = [
   '/last-call-invitational/',
   '/last-call-invitational/index.html',
