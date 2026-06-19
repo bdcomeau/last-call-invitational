@@ -137,6 +137,7 @@
       .bettor-card { break-inside: avoid; border: 1px solid #eee; margin-bottom: 4px; }
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -175,6 +176,14 @@
         <div style="display:flex;flex-direction:column;gap:10px;">
           <div class="field"><label>Team Name</label><input type="text" id="new-team-name" placeholder="Eagle Chasers" /></div>
           <button class="btn btn-primary" onclick="addTeam()">+ Add Team</button>
+          <div class="divider"></div>
+          <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import a list —</div>
+          <label style="display:flex;align-items:center;justify-content:center;gap:8px;background:transparent;color:#D4A843;border:1px solid #8F6E2A;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;">
+            📂 Import Excel / CSV
+            <input type="file" id="import-teams-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importTeams(this)" />
+          </label>
+          <div style="font-size:10px;color:#7A9E89;text-align:center;">One team name per row, first column</div>
+          <div id="import-teams-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
         </div>
       </div>
       <div class="card" id="teams-card" style="display:none;">
@@ -192,6 +201,14 @@
           <div class="field"><label>Email</label><input type="email" id="new-bettor-email" placeholder="jane@example.com" /></div>
           <div class="field"><label>Phone</label><input type="tel" id="new-bettor-phone" placeholder="555-867-5309" /></div>
           <button class="btn btn-primary" onclick="addBettor()">+ Add Bettor</button>
+          <div class="divider"></div>
+          <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import a list —</div>
+          <label style="display:flex;align-items:center;justify-content:center;gap:8px;background:transparent;color:#D4A843;border:1px solid #8F6E2A;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;">
+            📂 Import Excel / CSV
+            <input type="file" id="import-bettors-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importBettors(this)" />
+          </label>
+          <div style="font-size:10px;color:#7A9E89;text-align:center;">One name per row, first column</div>
+          <div id="import-bettors-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
         </div>
       </div>
       <div class="card" id="bettors-card" style="display:none;">
@@ -312,6 +329,7 @@
       </div>
     </div>
 
+    <div style="text-align:center;padding:8px 0 4px;font-size:10px;color:#2B4033;letter-spacing:1px;">v1.1</div>
   </div><!-- /content -->
 
   <div id="tabbar">
@@ -412,11 +430,11 @@ document.getElementById('handle-slider').addEventListener('input', function() {
 
 function addTeam() {
   const name = document.getElementById('new-team-name').value.trim();
-  const captain = document.getElementById('new-team-captain').value.trim();
-  if (!name || !captain) return;
-  state.teams.push({ id: uid(), name, captain });
+
+  if (!name) return;
+  state.teams.push({ id: uid(), name });
   document.getElementById('new-team-name').value = '';
-  document.getElementById('new-team-captain').value = '';
+
   save(); renderTeams(); updateHeader();
 }
 
@@ -439,7 +457,7 @@ function renderTeams() {
     <div class="list-row">
       <div>
         <span style="font-family:'Barlow Condensed';font-size:17px;font-weight:700;color:#D4A843;">#${i+1} ${esc(t.name)}</span>
-        <span style="font-size:12px;color:#7A9E89;margin-left:8px;">Cap: ${esc(t.captain)}</span>
+        
       </div>
       <button class="btn btn-danger" onclick="removeTeam('${t.id}')">✕</button>
     </div>`).join('');
@@ -505,7 +523,7 @@ function renderBetDropdowns() {
   bSel.innerHTML = '<option value="">— Select Bettor —</option>' +
     state.bettors.map(b => `<option value="${b.id}"${b.id===curB?' selected':''}>${esc(b.name)}</option>`).join('');
   tSel.innerHTML = '<option value="FIELD"🌐 Field — any team in this position</option>' +
-    state.teams.map(t => `<option value="${t.id}"${t.id===curT?' selected':''}>${esc(t.name)} (Cap: ${esc(t.captain)})</option>`).join('');
+    state.teams.map(t => `<option value="${t.id}"${t.id===curT?' selected':''}>${esc(t.name)}</option>`).join('');
   if (curT && curT !== 'FIELD') tSel.value = curT;
 }
 
@@ -582,7 +600,7 @@ function renderPlacements() {
     sel.innerHTML = '<option value="">— Select Team —</option>' +
       state.teams
         .filter(t => !others.includes(t.id) || t.id === cur)
-        .map(t => `<option value="${t.id}"${t.id===cur?' selected':''}>${esc(t.name)} (Cap: ${esc(t.captain)})</option>`)
+        .map(t => `<option value="${t.id}"${t.id===cur?' selected':''}>${esc(t.name)}</option>`)
         .join('');
     const nameEl = document.getElementById('pname-' + pos);
     const card = document.getElementById('pc-' + pos);
@@ -668,7 +686,7 @@ function renderResults() {
           <span style="font-size:26px;">${medals[i]}</span>
           <div>
             <div style="font-family:'Barlow Condensed';font-size:20px;font-weight:700;">${esc(t?.name||'?')}</div>
-            <div style="font-size:11px;color:#7A9E89;">Cap: ${esc(t?.captain||'')}</div>
+            
           </div>
         </div>
         <span class="pill" style="background:${pillColors[i]}20;color:${pillColors[i]};border:1px solid ${pillColors[i]}40;">${pills[i]}</span>
@@ -732,6 +750,76 @@ function renderResults() {
      <div>House: <strong style="color:#E05252;">${fmt(houseRetained)}</strong></div>`;
   document.getElementById('recon-balance').innerHTML =
     balanced ? '<span style="color:#3DB86E;">✓ BALANCED</span>' : '<span style="color:#E05252;">⚠ CHECK</span>';
+}
+
+// ─── IMPORT ───────────────────────────────────────────────────────────────────
+function parseFileNames(file, callback) {
+  const reader = new FileReader();
+  const isCSV = file.name.toLowerCase().endsWith('.csv');
+  if (isCSV) {
+    reader.onload = function(e) {
+      const lines = e.target.result.split(/\r?\n/);
+      const names = lines.map(l => l.split(',')[0].replace(/^"|"$/g,'').trim()).filter(n => n.length > 0);
+      callback(names);
+    };
+    reader.readAsText(file);
+  } else {
+    reader.onload = function(e) {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      const names = rows.map(r => String(r[0]||'').trim()).filter(n => n.length > 0);
+      callback(names);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function showImportMsg(elId, count, skipped) {
+  const el = document.getElementById(elId);
+  el.style.display = '';
+  if (count > 0) {
+    el.style.background = '#3DB86E20';
+    el.style.color = '#3DB86E';
+    el.textContent = '✓ Imported ' + count + ' name' + (count>1?'s':'') + (skipped>0?' ('+skipped+' duplicates skipped)':'');
+  } else {
+    el.style.background = '#E0525220';
+    el.style.color = '#E05252';
+    el.textContent = '⚠ No new names found — check your file';
+  }
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+function importTeams(input) {
+  const file = input.files[0];
+  if (!file) return;
+  parseFileNames(file, function(names) {
+    let added = 0, skipped = 0;
+    names.forEach(name => {
+      if (state.teams.find(t => t.name.toLowerCase() === name.toLowerCase())) { skipped++; return; }
+      state.teams.push({ id: uid(), name });
+      added++;
+    });
+    save(); renderTeams(); updateHeader();
+    showImportMsg('import-teams-msg', added, skipped);
+    input.value = '';
+  });
+}
+
+function importBettors(input) {
+  const file = input.files[0];
+  if (!file) return;
+  parseFileNames(file, function(names) {
+    let added = 0, skipped = 0;
+    names.forEach(name => {
+      if (state.bettors.find(b => b.name.toLowerCase() === name.toLowerCase())) { skipped++; return; }
+      state.bettors.push({ id: uid(), name, email: '', phone: '' });
+      added++;
+    });
+    save(); renderBettors(); updateHeader();
+    showImportMsg('import-bettors-msg', added, skipped);
+    input.value = '';
+  });
 }
 
 // ─── XSS escape ───────────────────────────────────────────────────────────────
