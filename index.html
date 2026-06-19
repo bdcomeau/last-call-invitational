@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=auto" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="Last Call" />
   <meta name="theme-color" content="#0E1A12" />
   <title>Last Call Invitational</title>
@@ -21,7 +21,7 @@
 
     /* Layout — simple reliable iOS approach */
     #app { max-width: 620px; margin: 0 auto; }
-    #header { background: #162219; border-bottom: 1px solid #2B4033; padding: 14px 18px 10px; }
+    #header { background: #162219; border-bottom: 1px solid #2B4033; padding: calc(env(safe-area-inset-top, 14px) + 14px) 18px 10px; }
     #header .eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; color: #8F6E2A; letter-spacing: 3px; }
     #header .title { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 900; color: #D4A843; line-height: 1.1; }
     #header .stats { font-size: 11px; color: #7A9E89; margin-top: 3px; display: flex; gap: 12px; flex-wrap: wrap; }
@@ -352,7 +352,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v2.1</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v2.2</div>
 
   <div id="tabbar">
     <button class="active" onclick="showTab('setup')"><span class="tab-icon">⚙️</span><span class="tab-label">SETUP</span></button>
@@ -430,6 +430,8 @@ function updateHeader() {
 }
 
 // ─── SETUP ────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+try {
 document.getElementById('tournament-name').addEventListener('input', function() {
   state.tournamentName = this.value;
   save(); updateHeader();
@@ -1284,6 +1286,11 @@ renderTeams();
 renderBettors();
 updateTote();
 updateHeader();
+} catch(e) {
+  // Show error visibly on screen
+  document.body.innerHTML = '<div style="padding:40px;color:#E05252;font-family:monospace;font-size:14px;background:#111;min-height:100vh;"><strong>JS ERROR — please screenshot and send:</strong><br/><br/>' + e.message + '<br/><br/>' + e.stack + '</div>';
+}
+});
 </script>
 </body>
 </html>
