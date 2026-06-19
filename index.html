@@ -13,32 +13,31 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; max-height: 100%; overflow: hidden; background: #0E1A12; color: #EDE8DC; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+    html, body { background: #0E1A12; color: #EDE8DC; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
     button { cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; }
     input, select { font-family: inherit; }
     ::-webkit-scrollbar { width: 3px; }
     ::-webkit-scrollbar-thumb { background: #2B4033; border-radius: 2px; }
 
-    /* Layout */
-    #app { max-width: 620px; margin: 0 auto; height: 100vh; height: 100dvh; display: flex; flex-direction: column; position: relative; overflow: hidden; }
-    #header { background: #162219; border-bottom: 1px solid #2B4033; padding: 14px 18px 10px; flex-shrink: 0; }
+    /* Layout — simple reliable iOS approach */
+    #app { max-width: 620px; margin: 0 auto; }
+    #header { background: #162219; border-bottom: 1px solid #2B4033; padding: 14px 18px 10px; }
     #header .eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; color: #8F6E2A; letter-spacing: 3px; }
     #header .title { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 900; color: #D4A843; line-height: 1.1; }
     #header .stats { font-size: 11px; color: #7A9E89; margin-top: 3px; display: flex; gap: 12px; flex-wrap: wrap; }
     #header .stats .pool-amt { color: #D4A843; }
     #header .stats .places-ok { color: #3DB86E; }
 
-    #content { flex: 1; padding: 18px 14px 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    #content { padding: 18px 14px 40px; }
 
-    #tabbar { position: absolute; bottom: 0; left: 0; right: 0; width: 100%; touch-action: manipulation; pointer-events: all;
-              background: #162219; border-top: 1px solid #2B4033; display: flex;
-              padding-bottom: env(safe-area-inset-bottom, 0px); z-index: 20; }
-    #tabbar button { flex: 1; background: none; border: none; border-top: 2px solid transparent; touch-action: manipulation; -webkit-tap-highlight-color: transparent; cursor: pointer;
+    #tabbar { background: #162219; border-top: 1px solid #2B4033; display: flex;
+              padding-bottom: env(safe-area-inset-bottom, 0px); }
+    #tabbar button { flex: 1; background: none; border: none; border-top: 2px solid transparent;
                      padding: 9px 4px 7px; display: flex; flex-direction: column; align-items: center;
-                     gap: 2px; color: #7A9E89; }
+                     gap: 2px; color: #7A9E89; font-family: inherit; cursor: pointer; }
     #tabbar button.active { color: #D4A843; border-top-color: #D4A843; }
-    #tabbar button .tab-icon { font-size: 19px; }
-    #tabbar button .tab-label { font-size: 9px; font-weight: 600; letter-spacing: 0.5px; }
+    .tab-icon { font-size: 19px; }
+    .tab-label { font-size: 9px; font-weight: 600; letter-spacing: 0.5px; }
 
     /* Screens — hidden by default */
     .screen { display: none; flex-direction: column; gap: 16px; }
@@ -351,25 +350,16 @@
       </div>
     </div>
 
-    <div style="text-align:center;padding:8px 0 4px;font-size:10px;color:#2B4033;letter-spacing:1px;">v1.8</div>
   </div><!-- /content -->
 
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v2.1</div>
+
   <div id="tabbar">
-    <button class="active" onclick="showTab('setup')">
-      <span class="tab-icon">⚙️</span><span class="tab-label">SETUP</span>
-    </button>
-    <button onclick="showTab('bettors')">
-      <span class="tab-icon">👥</span><span class="tab-label">BETTORS</span>
-    </button>
-    <button onclick="showTab('wagers')">
-      <span class="tab-icon">🎰</span><span class="tab-label">WAGERS</span>
-    </button>
-    <button onclick="showTab('placements')">
-      <span class="tab-icon">🏆</span><span class="tab-label">PLACES</span>
-    </button>
-    <button onclick="showTab('results')">
-      <span class="tab-icon">📋</span><span class="tab-label">RESULTS</span>
-    </button>
+    <button class="active" onclick="showTab('setup')"><span class="tab-icon">⚙️</span><span class="tab-label">SETUP</span></button>
+    <button onclick="showTab('bettors')"><span class="tab-icon">👥</span><span class="tab-label">BETTORS</span></button>
+    <button onclick="showTab('wagers')"><span class="tab-icon">🎰</span><span class="tab-label">WAGERS</span></button>
+    <button onclick="showTab('placements')"><span class="tab-icon">🏆</span><span class="tab-label">PLACES</span></button>
+    <button onclick="showTab('results')"><span class="tab-icon">📋</span><span class="tab-label">RESULTS</span></button>
   </div>
 </div>
 
@@ -417,6 +407,7 @@ function showTab(tab) {
   document.getElementById('screen-' + tab).classList.add('active');
   const tabs = ['setup','bettors','wagers','placements','results'];
   document.querySelectorAll('#tabbar button')[tabs.indexOf(tab)].classList.add('active');
+  window.scrollTo(0, 0);
   if (tab === 'wagers') { renderBetDropdowns(); renderWagers(); updateTote(); }
   if (tab === 'placements') renderPlacements();
   if (tab === 'results') renderResults();
