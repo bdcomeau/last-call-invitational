@@ -356,7 +356,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v3.0</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v3.1</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -616,6 +616,11 @@ function renderEvents() {
 }
 
 // ─── SETUP ────────────────────────────────────────────────────────────────────
+// ─── Utilities (top-level so all functions can access them) ──────────────────
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
 try {
 document.getElementById('tournament-name').addEventListener('input', function() {
@@ -1314,11 +1319,6 @@ async function importBets(input) {
   }
   setTimeout(() => { msgEl.style.display = 'none'; }, 6000);
   input.value = '';
-}
-
-// ─── XSS escape ───────────────────────────────────────────────────────────────
-function esc(str) {
-  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
