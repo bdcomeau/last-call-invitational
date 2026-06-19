@@ -153,8 +153,24 @@
 
   <div id="content">
 
+    <!-- EVENTS -->
+    <div class="screen active" id="screen-events">
+      <div class="section-head">📅 Events</div>
+      <div class="card">
+        <div style="font-size:12px;color:#7A9E89;margin-bottom:10px;">CREATE NEW EVENT</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="field"><label>Event Name</label><input type="text" id="new-event-name" placeholder="Last Call Invitational 2026" /></div>
+          <button class="btn btn-primary" onclick="createEvent()">+ Create Event</button>
+        </div>
+      </div>
+      <div class="card" id="events-list-card" style="display:none;">
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:10px;" id="events-count"></div>
+        <div id="events-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+    </div>
+
     <!-- SETUP -->
-    <div class="screen active" id="screen-setup">
+    <div class="screen" id="screen-setup">
       <div class="section-head">⚙️ Tournament Setup</div>
       <div class="card">
         <div class="field">
@@ -343,10 +359,11 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v2.4</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v2.5</div>
 
   <div id="tabbar">
-    <button class="active" onclick="showTab('setup')"><span class="tab-icon">⚙️</span><span class="tab-label">SETUP</span></button>
+    <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
+    <button onclick="showTab('setup')"><span class="tab-icon">⚙️</span><span class="tab-label">SETUP</span></button>
     <button onclick="showTab('bettors')"><span class="tab-icon">👥</span><span class="tab-label">BETTORS</span></button>
     <button onclick="showTab('wagers')"><span class="tab-icon">🎰</span><span class="tab-label">WAGERS</span></button>
     <button onclick="showTab('placements')"><span class="tab-icon">🏆</span><span class="tab-label">PLACES</span></button>
@@ -356,7 +373,20 @@
 
 <script>
 // ─── State ────────────────────────────────────────────────────────────────────
-const STORAGE_KEY = 'lci-v3';
+const STORAGE_KEY = 'lci-v4';
+
+// Root storage: { bettors: [], events: [], activeEventId: null }
+// Each event: { id, name, createdAt, archived, handlePct, teams, bets, placements }
+// Bettors are shared across all events
+
+let root = {
+  bettors: [],
+  events: [],
+  activeEventId: null
+};
+
+// state is a live reference into the active event — plus shared bettors
+// For backward compat, all existing code uses state.teams, state.bets etc.
 let state = {
   tournamentName: 'Last Call Invitational',
   handlePct: 3,
@@ -366,13 +396,65 @@ let state = {
   placements: { p1: '', p2: '', p3: '' }
 };
 
-function save() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+function activeEvent() {
+  return root.events.find(e => e.id === root.activeEventId) || null;
 }
+
+function syncStateFromRoot() {
+  const ev = activeEvent();
+  if (ev) {
+    state.tournamentName = ev.name;
+    state.handlePct      = ev.handlePct;
+    state.teams          = ev.teams;
+    state.bets           = ev.bets;
+    state.placements     = ev.placements;
+  }
+  state.bettors = root.bettors;
+}
+
+function syncRootFromState() {
+  const ev = activeEvent();
+  if (ev) {
+    ev.name       = state.tournamentName;
+    ev.handlePct  = state.handlePct;
+    ev.teams      = state.teams;
+    ev.bets       = state.bets;
+    ev.placements = state.placements;
+  }
+  root.bettors = state.bettors;
+}
+
+function save() {
+  try {
+    syncRootFromState();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(root));
+  } catch(e) {}
+}
+
 function load() {
   try {
+    // Try new v4 format first
     const s = localStorage.getItem(STORAGE_KEY);
-    if (s) state = JSON.parse(s);
+    if (s) {
+      root = JSON.parse(s);
+      syncStateFromRoot();
+      return;
+    }
+    // Migrate from old v3 format
+    const old = localStorage.getItem('lci-v3');
+    if (old) {
+      const oldState = JSON.parse(old);
+      const migEvent = {
+        id: uid(), name: oldState.tournamentName || 'Last Call Invitational',
+        createdAt: new Date().toISOString(), archived: false,
+        handlePct: oldState.handlePct || 3,
+        teams: oldState.teams || [], bets: oldState.bets || [],
+        placements: oldState.placements || { p1:'', p2:'', p3:'' }
+      };
+      root = { bettors: oldState.bettors || [], events: [migEvent], activeEventId: migEvent.id };
+      syncStateFromRoot();
+      save();
+    }
   } catch(e) {}
 }
 
@@ -396,12 +478,13 @@ function showTab(tab) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('#tabbar button').forEach(b => b.classList.remove('active'));
   document.getElementById('screen-' + tab).classList.add('active');
-  const tabs = ['setup','bettors','wagers','placements','results'];
+  const tabs = ['events','setup','bettors','wagers','placements','results'];
   document.querySelectorAll('#tabbar button')[tabs.indexOf(tab)].classList.add('active');
   window.scrollTo(0, 0);
-  if (tab === 'wagers') { renderBetDropdowns(); renderWagers(); updateTote(); }
+  if (tab === 'events')     renderEvents();
+  if (tab === 'wagers')     { renderBetDropdowns(); renderWagers(); updateTote(); }
   if (tab === 'placements') renderPlacements();
-  if (tab === 'results') renderResults();
+  if (tab === 'results')    renderResults();
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
@@ -418,6 +501,103 @@ function updateHeader() {
   const placesEl = document.getElementById('stat-places');
   if (pSet > 0) { placesEl.textContent = pSet + '/3 places set'; placesEl.style.display = ''; placesEl.className = pSet === 3 ? 'places-ok' : ''; }
   else placesEl.style.display = 'none';
+}
+
+
+// ─── EVENTS ───────────────────────────────────────────────────────────────────
+function createEvent() {
+  const name = document.getElementById('new-event-name').value.trim();
+  if (!name) return;
+  const ev = {
+    id: uid(), name, createdAt: new Date().toISOString(), archived: false,
+    handlePct: 3, teams: [], bets: [], placements: { p1:'', p2:'', p3:'' }
+  };
+  root.events.push(ev);
+  setActiveEvent(ev.id);
+  document.getElementById('new-event-name').value = '';
+  showTab('setup');
+}
+
+function setActiveEvent(id) {
+  // Archive current event first
+  const cur = activeEvent();
+  if (cur) syncRootFromState();
+  root.activeEventId = id;
+  syncStateFromRoot();
+  save();
+  updateHeader();
+  // Reset setup screen inputs
+  const tn = document.getElementById('tournament-name');
+  const hs = document.getElementById('handle-slider');
+  const hd = document.getElementById('handle-display');
+  if (tn) tn.value = state.tournamentName;
+  if (hs) hs.value = state.handlePct;
+  if (hd) hd.textContent = state.handlePct + '%';
+  renderTeams();
+  renderBettors();
+  renderWagers();
+  updateTote();
+  renderEvents();
+}
+
+function archiveEvent(id) {
+  const ev = root.events.find(e => e.id === id);
+  if (!ev) return;
+  if (!confirm('Archive "' + ev.name + '"? It will become read-only.')) return;
+  ev.archived = true;
+  save();
+  renderEvents();
+}
+
+function viewArchivedResults(id) {
+  const ev = root.events.find(e => e.id === id);
+  if (!ev) return;
+  // Temporarily show results for this event
+  const saved = { teams: state.teams, bets: state.bets, placements: state.placements,
+                  tournamentName: state.tournamentName, handlePct: state.handlePct };
+  state.teams = ev.teams; state.bets = ev.bets; state.placements = ev.placements;
+  state.tournamentName = ev.name; state.handlePct = ev.handlePct;
+  renderResults();
+  // Restore
+  state.teams = saved.teams; state.bets = saved.bets; state.placements = saved.placements;
+  state.tournamentName = saved.tournamentName; state.handlePct = saved.handlePct;
+  showTab('results');
+}
+
+function renderEvents() {
+  const card  = document.getElementById('events-list-card');
+  const list  = document.getElementById('events-list');
+  const count = document.getElementById('events-count');
+  if (!root.events.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  count.textContent = root.events.length + ' event' + (root.events.length > 1 ? 's' : '');
+  const cur = root.activeEventId;
+  list.innerHTML = [...root.events].reverse().map(ev => {
+    const isActive   = ev.id === cur;
+    const isArchived = ev.archived;
+    const date       = new Date(ev.createdAt).getFullYear();
+    const betCount   = ev.bets.length;
+    const pool       = ev.bets.reduce((s,b) => s + b.amount, 0);
+    const hasResults = ev.placements.p1 && ev.placements.p2 && ev.placements.p3;
+    return '<div style="background:' + (isActive ? '#243A2A' : '#162219') + ';border:1px solid ' +
+      (isActive ? '#D4A843' : '#2B4033') + ';border-radius:10px;padding:12px 14px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
+        '<div>' +
+          '<div style="font-weight:700;font-size:15px;color:' + (isActive ? '#D4A843' : '#EDE8DC') + ';">' + esc(ev.name) + '</div>' +
+          '<div style="font-size:11px;color:#7A9E89;margin-top:2px;">' +
+            (isArchived ? '🔒 Archived' : isActive ? '✅ Active' : '⚪ Inactive') +
+            ' · ' + betCount + ' bets · ' + fmt(pool) +
+            (hasResults ? ' · Results set' : '') +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">' +
+          (!isArchived && !isActive ? '<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="setActiveEvent(&quot;' + ev.id + '&quot;)">Open</button>' : '') +
+          (!isArchived && isActive  ? '<button class="btn btn-danger" style="font-size:11px;padding:5px 10px;" onclick="archiveEvent(&quot;' + ev.id + '&quot;)">Archive</button>' : '') +
+          (hasResults ? '<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="viewArchivedResults(&quot;' + ev.id + '&quot;)">Results</button>' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 // ─── SETUP ────────────────────────────────────────────────────────────────────
