@@ -160,7 +160,7 @@
         <div style="font-size:12px;color:#7A9E89;margin-bottom:10px;">CREATE NEW EVENT</div>
         <div style="display:flex;flex-direction:column;gap:10px;">
           <div class="field"><label>Event Name</label><input type="text" id="new-event-name" placeholder="Last Call Invitational 2026" /></div>
-          <button class="btn btn-primary" onclick="createEvent()">+ Create Event</button>
+          <button class="btn btn-primary" onclick="newTournament()">+ Create Event</button>
         </div>
       </div>
       <div class="card" id="events-list-card" style="display:none;">
@@ -356,7 +356,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v2.8</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v3.0</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -474,19 +474,23 @@ function teamName(id) {
 
 // ─── Tab navigation ───────────────────────────────────────────────────────────
 function showTab(tab) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('#tabbar button').forEach(b => b.classList.remove('active'));
-  const screen = document.getElementById('screen-' + tab);
-  if (screen) screen.classList.add('active');
-  const tabs = ['events','setup','bettors','wagers','placements','results'];
-  const idx = tabs.indexOf(tab);
-  const btn = document.querySelectorAll('#tabbar button')[idx];
-  if (btn) btn.classList.add('active');
-  window.scrollTo(0, 0);
-  if (tab === 'events')     renderEvents();
-  if (tab === 'wagers')     { renderBetDropdowns(); renderWagers(); updateTote(); }
-  if (tab === 'placements') renderPlacements();
-  if (tab === 'results')    renderResults();
+  try {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('#tabbar button').forEach(b => b.classList.remove('active'));
+    const screen = document.getElementById('screen-' + tab);
+    if (screen) screen.classList.add('active');
+    const tabs = ['events','setup','bettors','wagers','placements','results'];
+    const idx = tabs.indexOf(tab);
+    const btns = document.querySelectorAll('#tabbar button');
+    if (idx >= 0 && btns[idx]) btns[idx].classList.add('active');
+    window.scrollTo(0, 0);
+    if (tab === 'events')     renderEvents();
+    if (tab === 'wagers')     { renderBetDropdowns(); renderWagers(); updateTote(); }
+    if (tab === 'placements') renderPlacements();
+    if (tab === 'results')    renderResults();
+  } catch(e) {
+    alert('showTab ERROR: ' + e.message);
+  }
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
@@ -507,17 +511,29 @@ function updateHeader() {
 
 
 // ─── EVENTS ───────────────────────────────────────────────────────────────────
-function createEvent() {
-  const name = document.getElementById('new-event-name').value.trim();
-  if (!name) return;
-  const ev = {
-    id: uid(), name, createdAt: new Date().toISOString(), archived: false,
-    handlePct: 3, teams: [], bets: [], placements: { p1:'', p2:'', p3:'' }
-  };
-  root.events.push(ev);
-  setActiveEvent(ev.id);
-  document.getElementById('new-event-name').value = '';
-  showTab('setup');
+function newTournament() {
+  try {
+    const nameEl = document.getElementById('new-event-name');
+    if (!nameEl) { alert('ERROR: name input not found'); return; }
+    const name = nameEl.value.trim();
+    if (!name) { alert('Please enter an event name first.'); return; }
+    const ev = {
+      id: uid(), name: name, createdAt: new Date().toISOString(), archived: false,
+      handlePct: 3, teams: [], bets: [], placements: { p1:'', p2:'', p3:'' }
+    };
+    if (!root.events) root.events = [];
+    root.events.push(ev);
+    root.activeEventId = ev.id;
+    syncStateFromRoot();
+    save();
+    nameEl.value = '';
+    updateHeader();
+    renderEvents();
+    alert('Event "' + name + '" created! Switching to Setup tab.');
+    showTab('setup');
+  } catch(e) {
+    alert('createEvent ERROR: ' + e.message + '\n' + e.stack);
+  }
 }
 
 function setActiveEvent(id) {
