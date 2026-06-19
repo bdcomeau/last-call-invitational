@@ -268,6 +268,15 @@
         <input type="text" class="bare" id="wager-search" placeholder="🔍  Filter wagers…" oninput="renderWagers()" style="margin-bottom:10px;" />
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;" id="wagers-count"></div>
         <div class="scroll-list" id="wagers-list" style="max-height:440px;"></div>
+        <div class="divider"></div>
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">🎟 BETTOR TICKET / RECEIPT</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="ticket-bettor" style="flex:1;background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;">
+            <option value="">— Select Bettor —</option>
+          </select>
+          <button class="btn btn-ghost" onclick="printTicket()" style="white-space:nowrap;">🖨 Print Ticket</button>
+        </div>
+        <div style="font-size:10px;color:#7A9E89;margin-top:6px;text-align:center;">Prints a PDF receipt you can share or text to the bettor</div>
       </div>
     </div>
 
@@ -343,7 +352,7 @@
       </div>
     </div>
 
-    <div style="text-align:center;padding:8px 0 4px;font-size:10px;color:#2B4033;letter-spacing:1px;">v1.4</div>
+    <div style="text-align:center;padding:8px 0 4px;font-size:10px;color:#2B4033;letter-spacing:1px;">v1.6</div>
   </div><!-- /content -->
 
   <div id="tabbar">
@@ -542,6 +551,14 @@ function renderBetDropdowns() {
   tSel.innerHTML = '<option value="FIELD">🌐 Field — any team in this position</option>' +
     [...state.teams].sort((a,b) => a.name.localeCompare(b.name)).map(t => `<option value="${t.id}"${t.id===curT?' selected':''}>${esc(t.name)}</option>`).join('');
   if (curT && curT !== 'FIELD') tSel.value = curT;
+  // Also populate the ticket bettor dropdown
+  const tickSel = document.getElementById('ticket-bettor');
+  if (tickSel) {
+    const curTick = tickSel.value;
+    tickSel.innerHTML = '<option value="">— Select Bettor —</option>' +
+      [...state.bettors].sort((a,b) => a.name.localeCompare(b.name))
+      .map(b => '<option value="' + b.id + '"' + (b.id===curTick?' selected':'') + '>' + esc(b.name) + '</option>').join('');
+  }
 }
 
 function updateTote() {
@@ -661,6 +678,80 @@ function renderWagers() {
   }).join('');
 }
 
+// ─── TICKET ───────────────────────────────────────────────────────────────────
+function printTicket() {
+  const bettorId = document.getElementById('ticket-bettor').value;
+  if (!bettorId) { alert('Please select a bettor first.'); return; }
+  const bettor = bettorById(bettorId);
+  const bets   = state.bets.filter(b => b.bettorId === bettorId);
+  if (!bets.length) { alert('No bets found for this bettor.'); return; }
+
+  // Group combo legs back together for display
+  const seen = new Set();
+  const groups = [];
+  bets.forEach(b => {
+    if (b.comboGroupId) {
+      if (!seen.has(b.comboGroupId)) {
+        seen.add(b.comboGroupId);
+        const legs = bets.filter(x => x.comboGroupId === b.comboGroupId);
+        groups.push({ isCombo: true, legs, teamId: b.teamId, comboType: b.combo, amount: legs[0].amount, total: legs.reduce((s,x)=>s+x.amount,0) });
+      }
+    } else {
+      groups.push({ isCombo: false, legs: [b], teamId: b.teamId, comboType: null, amount: b.amount, total: b.amount, type: b.type });
+    }
+  });
+
+  const totalWagered = groups.reduce((s,g) => s + g.total, 0);
+  const now = new Date().toLocaleString('en-CA', { dateStyle:'medium', timeStyle:'short' });
+  const COMBO_DISPLAY = { 'win-place':'WIN + PLACE', 'win-place-show':'WIN + PLACE + SHOW' };
+
+  const rows = groups.map(g => {
+    const typeDisplay = g.isCombo ? (COMBO_DISPLAY[g.comboType]||g.comboType) : g.type.toUpperCase();
+    const collected   = g.isCombo ? fmt(g.total) + ' (' + fmt(g.amount) + ' × ' + g.legs.length + ')' : fmt(g.total);
+    return '<tr>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid #eee;">' + esc(teamName(g.teamId)) + '</td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid #eee;font-weight:700;">' + typeDisplay + '</td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:right;">' + collected + '</td>' +
+    '</tr>';
+  }).join('');
+
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"/>' +
+    '<title>Betting Ticket — ' + esc(bettor.name) + '</title>' +
+    '<style>' +
+      'body{font-family:Arial,sans-serif;max-width:420px;margin:30px auto;color:#111;font-size:14px;}' +
+      'h1{font-size:22px;margin:0 0 4px;}' +
+      '.sub{color:#666;font-size:12px;margin-bottom:20px;}' +
+      'table{width:100%;border-collapse:collapse;}' +
+      'th{background:#1E2E23;color:#D4A843;padding:8px 10px;text-align:left;font-size:12px;letter-spacing:1px;}' +
+      'tr:last-child td{border-bottom:none;}' +
+      '.total-row{font-weight:700;font-size:15px;}' +
+      '.total-row td{padding:10px;border-top:2px solid #111;}' +
+      '.footer{margin-top:24px;font-size:11px;color:#888;text-align:center;border-top:1px solid #ddd;padding-top:12px;}' +
+      '@media print{body{margin:10px;}}' +
+    '</style></head><body>' +
+    '<h1>' + esc(state.tournamentName) + '</h1>' +
+    '<div class="sub">OFFICIAL BETTING TICKET · ' + now + '</div>' +
+    '<div style="background:#f9f6ee;border:1px solid #d4a843;border-radius:8px;padding:12px 14px;margin-bottom:16px;">' +
+      '<div style="font-size:12px;color:#8F6E2A;font-weight:700;letter-spacing:1px;">BETTOR</div>' +
+      '<div style="font-size:18px;font-weight:700;">' + esc(bettor.name) + '</div>' +
+      (bettor.email ? '<div style="font-size:12px;color:#555;">' + esc(bettor.email) + '</div>' : '') +
+      (bettor.phone ? '<div style="font-size:12px;color:#555;">' + esc(bettor.phone) + '</div>' : '') +
+    '</div>' +
+    '<table>' +
+      '<thead><tr><th>TEAM</th><th>BET TYPE</th><th style="text-align:right;">AMOUNT</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+      '<tfoot><tr class="total-row"><td colspan="2">TOTAL COLLECTED</td><td style="text-align:right;">' + fmt(totalWagered) + '</td></tr></tfoot>' +
+    '</table>' +
+    '<div class="footer">Good luck! · ' + esc(state.tournamentName) + ' · Texas Scramble</div>' +
+    '</body></html>';
+
+  const win = window.open('', '_blank', 'width=500,height=700');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(function() { win.print(); }, 400);
+}
+
 // ─── PLACEMENTS ───────────────────────────────────────────────────────────────
 function renderPlacements() {
   const noTeams = document.getElementById('no-teams-msg');
@@ -698,39 +789,99 @@ function setPlacement(pos, val) {
 }
 
 // ─── RESULTS ─────────────────────────────────────────────────────────────────
+// Parimutuel payout rules:
+//   WIN pool  → 100% to 1st-place bettors
+//   PLACE pool → 50% to 1st-place bettors, 50% to 2nd-place bettors
+//   SHOW pool  → 33.3% each to 1st, 2nd, 3rd-place bettors
+// If nobody bet a winning position the pool carries to house (no winners = no payout).
+// Total payout is mathematically guaranteed ≤ total collected − house, so books always balance.
 function calcPayouts() {
   const { p1, p2, p3 } = state.placements;
   const placements = [p1, p2, p3];
   const take = state.handlePct / 100;
+
   const pools = { win: 0, place: 0, show: 0 };
   state.bets.forEach(b => { pools[b.type] += b.amount; });
-  const net = { win: pools.win*(1-take), place: pools.place*(1-take), show: pools.show*(1-take) };
+
+  const totalCollected = pools.win + pools.place + pools.show;
+  const net = {
+    win:   Math.round(pools.win   * (1 - take) * 100) / 100,
+    place: Math.round(pools.place * (1 - take) * 100) / 100,
+    show:  Math.round(pools.show  * (1 - take) * 100) / 100,
+  };
+
   const covers = (bet, pos) => bet.teamId === 'FIELD' || bet.teamId === placements[pos];
-  const stake = (type, pos) => state.bets.filter(b => b.type===type && covers(b,pos)).reduce((s,b)=>s+b.amount,0);
-  const ppd = (pool, div) => div > 0 ? pool / div : 0;
-  const winPPD = ppd(net.win,        stake('win',0));
-  const pl1PPD = ppd(net.place/2,    stake('place',0));
-  const pl2PPD = ppd(net.place/2,    stake('place',1));
-  const sh1PPD = ppd(net.show/3,     stake('show',0));
-  const sh2PPD = ppd(net.show/3,     stake('show',1));
-  const sh3PPD = ppd(net.show/3,     stake('show',2));
+
+  const winStake  = state.bets.filter(b => b.type==='win'   && covers(b,0)).reduce((s,b)=>s+b.amount,0);
+  const pl1Stake  = state.bets.filter(b => b.type==='place' && covers(b,0)).reduce((s,b)=>s+b.amount,0);
+  const pl2Stake  = state.bets.filter(b => b.type==='place' && covers(b,1)).reduce((s,b)=>s+b.amount,0);
+  const sh1Stake  = state.bets.filter(b => b.type==='show'  && covers(b,0)).reduce((s,b)=>s+b.amount,0);
+  const sh2Stake  = state.bets.filter(b => b.type==='show'  && covers(b,1)).reduce((s,b)=>s+b.amount,0);
+  const sh3Stake  = state.bets.filter(b => b.type==='show'  && covers(b,2)).reduce((s,b)=>s+b.amount,0);
+
+  // PLACE pool redistribution:
+  // If one finishing position has no winning tickets, its half rolls to the other half.
+  // If neither has tickets, entire place pool stays with house.
+  let pl1Pool, pl2Pool;
+  if (pl1Stake === 0 && pl2Stake === 0) {
+    pl1Pool = 0; pl2Pool = 0;
+  } else if (pl1Stake === 0) {
+    pl1Pool = 0; pl2Pool = net.place;
+  } else if (pl2Stake === 0) {
+    pl1Pool = net.place; pl2Pool = 0;
+  } else {
+    pl1Pool = net.place / 2; pl2Pool = net.place / 2;
+  }
+
+  // SHOW pool redistribution:
+  // Divide net show pool equally among only the slices that have winning tickets.
+  // Empty slices roll into the remaining winning slices rather than going to house.
+  const shStakes  = [sh1Stake, sh2Stake, sh3Stake];
+  const shHasWin  = shStakes.map(s => s > 0);
+  const shWinCt   = shHasWin.filter(Boolean).length;
+  const shPools   = shHasWin.map(hasWin => hasWin && shWinCt > 0 ? net.show / shWinCt : 0);
+  const sh1Pool   = shPools[0];
+  const sh2Pool   = shPools[1];
+  const sh3Pool   = shPools[2];
+
+  const ppd = (pool, stake) => stake > 0 ? pool / stake : 0;
+  const winPPD  = ppd(net.win, winStake);
+  const pl1PPD  = ppd(pl1Pool, pl1Stake);
+  const pl2PPD  = ppd(pl2Pool, pl2Stake);
+  const sh1PPD  = ppd(sh1Pool, sh1Stake);
+  const sh2PPD  = ppd(sh2Pool, sh2Stake);
+  const sh3PPD  = ppd(sh3Pool, sh3Stake);
+
   const betResults = state.bets.map(b => {
     let payout = 0;
-    if (b.type==='win'   && covers(b,0)) payout = b.amount*(1+winPPD);
-    if (b.type==='place') {
-      if      (covers(b,0)) payout = b.amount*(1+pl1PPD);
-      else if (covers(b,1)) payout = b.amount*(1+pl2PPD);
+    if (b.type === 'win') {
+      if (covers(b,0)) payout = b.amount * (1 + winPPD);
+    } else if (b.type === 'place') {
+      if      (covers(b,0)) payout = b.amount * (1 + pl1PPD);
+      else if (covers(b,1)) payout = b.amount * (1 + pl2PPD);
+    } else if (b.type === 'show') {
+      if      (covers(b,0)) payout = b.amount * (1 + sh1PPD);
+      else if (covers(b,1)) payout = b.amount * (1 + sh2PPD);
+      else if (covers(b,2)) payout = b.amount * (1 + sh3PPD);
     }
-    if (b.type==='show') {
-      if      (covers(b,0)) payout = b.amount*(1+sh1PPD);
-      else if (covers(b,1)) payout = b.amount*(1+sh2PPD);
-      else if (covers(b,2)) payout = b.amount*(1+sh3PPD);
-    }
-    return { ...b, payout: Math.round(payout*100)/100 };
+    return { ...b, payout: Math.round(payout * 100) / 100 };
   });
-  const houseRetained = (pools.win+pools.place+pools.show)*take;
-  return { betResults, pools, net, houseRetained };
+
+  // Rounding guard: total payout can never exceed net pool
+  const rawTotalPayout = betResults.reduce((s,b) => s + b.payout, 0);
+  const netPool = totalCollected * (1 - take);
+  let scaledResults = betResults;
+  if (rawTotalPayout > netPool + 0.01) {
+    const scale = netPool / rawTotalPayout;
+    scaledResults = betResults.map(b => ({ ...b, payout: Math.round(b.payout * scale * 100) / 100 }));
+  }
+
+  const totalPayout   = scaledResults.reduce((s,b) => s + b.payout, 0);
+  const houseRetained = Math.round((totalCollected - totalPayout) * 100) / 100;
+
+  return { betResults: scaledResults, pools, net, houseRetained, totalCollected, totalPayout };
 }
+
 
 function renderResults() {
   const { p1, p2, p3 } = state.placements;
@@ -742,89 +893,86 @@ function renderResults() {
   content.style.flexDirection = 'column';
   content.style.gap = '16px';
 
-  const { betResults, net, houseRetained } = calcPayouts();
-  const totalWagered = state.bets.reduce((s,b)=>s+b.amount,0);
-  const totalPayout  = betResults.reduce((s,b)=>s+b.payout,0);
-  const balanced     = Math.abs(totalWagered - totalPayout - houseRetained) < 0.02;
+  const { betResults, pools, net, houseRetained, totalCollected, totalPayout } = calcPayouts();
+  const balanced = Math.abs(totalCollected - totalPayout - houseRetained) < 0.02;
 
-  // Podium
   const medals = ['🥇','🥈','🥉'];
   const pills  = ['WIN · PLACE · SHOW','PLACE · SHOW','SHOW'];
   const pillColors = ['#D4A843','#C0C0C0','#CD7F32'];
   document.getElementById('results-podium').innerHTML =
-    '<div style="font-family:\'Barlow Condensed\';font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">FINAL STANDINGS</div>' +
+    '<div style="font-family:'Barlow Condensed';font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">FINAL STANDINGS</div>' +
     [p1,p2,p3].map((id,i) => {
       const t = teamById(id);
-      return `<div${i<2?' style="border-bottom:1px solid #2B4033;padding-bottom:10px;"':''} style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:26px;">${medals[i]}</span>
-          <div>
-            <div style="font-family:'Barlow Condensed';font-size:20px;font-weight:700;">${esc(t?.name||'?')}</div>
-            
-          </div>
-        </div>
-        <span class="pill" style="background:${pillColors[i]}20;color:${pillColors[i]};border:1px solid ${pillColors[i]}40;">${pills[i]}</span>
-      </div>`;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;' + (i<2?'border-bottom:1px solid #2B4033;':'') + '">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<span style="font-size:26px;">' + medals[i] + '</span>' +
+          '<div style="font-family:'Barlow Condensed';font-size:20px;font-weight:700;">' + esc(t?.name||'?') + '</div>' +
+        '</div>' +
+        '<span class="pill" style="background:' + pillColors[i] + '20;color:' + pillColors[i] + ';border:1px solid ' + pillColors[i] + '40;">' + pills[i] + '</span>' +
+      '</div>';
     }).join('');
 
-  // Pool grid
-  const poolItems = [
-    ['Total Collected',  totalWagered,   '#D4A843'],
-    ['House Retained',   houseRetained,  '#E05252'],
-    ['Win Pool (net)',   net.win,        '#3DB86E'],
-    ['Place Pool (net)', net.place,      '#5AAEDD'],
-    ['Show Pool (net)',  net.show,       '#B07FDE'],
-    ['Total Paid Out',   totalPayout,    '#3DB86E'],
-  ];
-  document.getElementById('pool-grid').innerHTML = poolItems.map(([l,v,col]) =>
-    `<div class="pool-cell"><div class="pool-cell-label">${l}</div><div class="pool-cell-val" style="color:${col};">${fmt(v)}</div></div>`
-  ).join('');
-  document.getElementById('balance-msg').innerHTML =
-    balanced ? '<span style="color:#3DB86E;">✓ Books are balanced</span>' : '<span style="color:#E05252;">⚠ Reconciliation mismatch</span>';
+  document.getElementById('pool-grid').innerHTML = [
+    ['Total Collected',  totalCollected,  '#D4A843'],
+    ['House Retained',   houseRetained,   '#E05252'],
+    ['Win Pool (net)',   net.win,         '#3DB86E'],
+    ['Place Pool (net)', net.place,       '#5AAEDD'],
+    ['Show Pool (net)',  net.show,        '#B07FDE'],
+    ['Total Paid Out',   totalPayout,     '#3DB86E'],
+  ].map(function(item) {
+    return '<div class="pool-cell"><div class="pool-cell-label">' + item[0] + '</div><div class="pool-cell-val" style="color:' + item[2] + ';">' + fmt(item[1]) + '</div></div>';
+  }).join('');
 
-  // Bettor reconciliation
+  document.getElementById('balance-msg').innerHTML = balanced
+    ? '<span style="color:#3DB86E;">✓ Books balanced — payout never exceeds collected less house</span>'
+    : '<span style="color:#E05252;">⚠ Reconciliation issue</span>';
+
   const bettorMap = {};
-  betResults.forEach(b => {
+  betResults.forEach(function(b) {
     if (!bettorMap[b.bettorId]) bettorMap[b.bettorId] = { wagered:0, payout:0, bets:[] };
     bettorMap[b.bettorId].wagered += b.amount;
     bettorMap[b.bettorId].payout  += b.payout;
     bettorMap[b.bettorId].bets.push(b);
   });
-  const sorted = Object.entries(bettorMap).sort((a,b) => b[1].payout - a[1].payout);
-  document.getElementById('recon-list').innerHTML = sorted.map(([id, s]) => {
-    const bettor = bettorById(id);
-    const netGain = s.payout - s.wagered;
-    const betLines = s.bets.map(b => {
+  const sortedBettors = Object.entries(bettorMap)
+    .sort(function(a,b) { return (bettorById(a[0])?.name||'').localeCompare(bettorById(b[0])?.name||''); });
+
+  document.getElementById('recon-list').innerHTML = sortedBettors.map(function(entry) {
+    const id = entry[0], s = entry[1];
+    const bettor  = bettorById(id);
+    const netGain = Math.round((s.payout - s.wagered) * 100) / 100;
+    const betLines = s.bets.map(function(b) {
       const col = b.payout > 0 ? '#3DB86E' : '#7A9E89';
       const fw  = b.payout > 0 ? 600 : 400;
-      return `<div class="bet-line">
-        <span>${esc(teamName(b.teamId))} · <span style="color:${TYPE_COLOR[b.type]};text-transform:uppercase;font-weight:700;">${b.type}</span> · ${fmt(b.amount)}</span>
-        <span style="color:${col};font-weight:${fw};">${b.payout>0?'→ '+fmt(b.payout):'— no payout'}</span>
-      </div>`;
+      return '<div class="bet-line">' +
+        '<span>' + esc(teamName(b.teamId)) + ' · <span style="color:' + TYPE_COLOR[b.type] + ';text-transform:uppercase;font-weight:700;">' + b.type + '</span> · ' + fmt(b.amount) + '</span>' +
+        '<span style="color:' + col + ';font-weight:' + fw + ';">' + (b.payout>0?'→ '+fmt(b.payout):'— no payout') + '</span>' +
+      '</div>';
     }).join('');
-    return `<div class="bettor-card" style="margin-bottom:10px;">
-      <div class="bettor-header">
-        <div>
-          <div class="bettor-name">${esc(bettor?.name||id)}</div>
-          <div class="bettor-contact">${esc(bettor?.email||'')}${bettor?.phone?' · '+esc(bettor.phone):''}</div>
-          <div class="bettor-wagered">Wagered: ${fmt(s.wagered)}</div>
-        </div>
-        <div style="text-align:right;">
-          <div class="bettor-payout" style="color:${s.payout>0?'#3DB86E':'#7A9E89'};">${fmt(s.payout)}</div>
-          <div class="bettor-net" style="color:${netGain>=0?'#3DB86E':'#E05252'};">${netGain>=0?'+':'−'}${fmt(Math.abs(netGain))} ${netGain>=0?'profit':'loss'}</div>
-        </div>
-      </div>
-      <div style="margin-top:8px;">${betLines}</div>
-    </div>`;
+    return '<div class="bettor-card" style="margin-bottom:10px;">' +
+      '<div class="bettor-header">' +
+        '<div>' +
+          '<div class="bettor-name">' + esc(bettor?.name||id) + '</div>' +
+          '<div class="bettor-contact">' + esc(bettor?.email||'') + (bettor?.phone?' · '+esc(bettor.phone):'') + '</div>' +
+          '<div class="bettor-wagered">Wagered: ' + fmt(s.wagered) + '</div>' +
+        '</div>' +
+        '<div style="text-align:right;">' +
+          '<div class="bettor-payout" style="color:' + (s.payout>0?'#3DB86E':'#7A9E89') + ';">' + fmt(s.payout) + '</div>' +
+          '<div class="bettor-net" style="color:' + (netGain>=0?'#3DB86E':'#E05252') + ';">' + (netGain>=0?'+':'−') + fmt(Math.abs(netGain)) + ' ' + (netGain>=0?'profit':'loss') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="margin-top:8px;">' + betLines + '</div>' +
+    '</div>';
   }).join('');
 
   document.getElementById('recon-totals').innerHTML =
-    `<div>Collected: <strong style="color:#EDE8DC;">${fmt(totalWagered)}</strong></div>
-     <div>Paid out: <strong style="color:#3DB86E;">${fmt(totalPayout)}</strong></div>
-     <div>House: <strong style="color:#E05252;">${fmt(houseRetained)}</strong></div>`;
+    '<div>Collected: <strong style="color:#EDE8DC;">' + fmt(totalCollected) + '</strong></div>' +
+    '<div>Paid out: <strong style="color:#3DB86E;">' + fmt(totalPayout) + '</strong></div>' +
+    '<div>House: <strong style="color:#E05252;">' + fmt(houseRetained) + '</strong></div>';
   document.getElementById('recon-balance').innerHTML =
     balanced ? '<span style="color:#3DB86E;">✓ BALANCED</span>' : '<span style="color:#E05252;">⚠ CHECK</span>';
 }
+
 
 // ─── IMPORT ───────────────────────────────────────────────────────────────────
 function parseFileNames(file, callback) {
