@@ -159,7 +159,7 @@
       <div class="card">
         <div style="font-size:12px;color:#7A9E89;margin-bottom:10px;">CREATE NEW EVENT</div>
         <div style="display:flex;flex-direction:column;gap:10px;">
-          <div class="field"><label>Event Name</label><input type="text" id="new-event-name" placeholder="Last Call Invitational 2026" /></div>
+          <div class="field"><label>Event Name</label><input type="text" id="new-event-name" placeholder="" /></div>
           <button class="btn btn-primary" onclick="newTournament()">+ Create Event</button>
         </div>
       </div>
@@ -356,7 +356,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v3.1</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v3.4</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -488,9 +488,7 @@ function showTab(tab) {
     if (tab === 'wagers')     { renderBetDropdowns(); renderWagers(); updateTote(); }
     if (tab === 'placements') renderPlacements();
     if (tab === 'results')    renderResults();
-  } catch(e) {
-    alert('showTab ERROR: ' + e.message);
-  }
+  } catch(e) { /* silent */ }
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
@@ -512,28 +510,22 @@ function updateHeader() {
 
 // ─── EVENTS ───────────────────────────────────────────────────────────────────
 function newTournament() {
-  try {
-    const nameEl = document.getElementById('new-event-name');
-    if (!nameEl) { alert('ERROR: name input not found'); return; }
-    const name = nameEl.value.trim();
-    if (!name) { alert('Please enter an event name first.'); return; }
-    const ev = {
-      id: uid(), name: name, createdAt: new Date().toISOString(), archived: false,
-      handlePct: 3, teams: [], bets: [], placements: { p1:'', p2:'', p3:'' }
-    };
-    if (!root.events) root.events = [];
-    root.events.push(ev);
-    root.activeEventId = ev.id;
-    syncStateFromRoot();
-    save();
-    nameEl.value = '';
-    updateHeader();
-    renderEvents();
-    alert('Event "' + name + '" created! Switching to Setup tab.');
-    showTab('setup');
-  } catch(e) {
-    alert('createEvent ERROR: ' + e.message + '\n' + e.stack);
-  }
+  const nameEl = document.getElementById('new-event-name');
+  const name = nameEl ? nameEl.value.trim() : '';
+  if (!name) return;
+  const ev = {
+    id: uid(), name: name, createdAt: new Date().toISOString(), archived: false,
+    handlePct: 3, teams: [], bets: [], placements: { p1:'', p2:'', p3:'' }
+  };
+  if (!root.events) root.events = [];
+  root.events.push(ev);
+  root.activeEventId = ev.id;
+  syncStateFromRoot();
+  save();
+  if (nameEl) nameEl.value = '';
+  updateHeader();
+  renderEvents();
+  showTab('setup');
 }
 
 function setActiveEvent(id) {
@@ -621,8 +613,8 @@ function esc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-try {
+
+// ─── Boot & event listeners ─────────────────────────────────────────────────
 document.getElementById('tournament-name').addEventListener('input', function() {
   state.tournamentName = this.value;
   save(); updateHeader();
@@ -1205,6 +1197,11 @@ function showImportMsg(elId, count, skipped) {
   const el = document.getElementById(elId);
   if (!el) return;
   el.style.display = '';
+  if (count === -1) {
+    el.style.background = '#E0525220'; el.style.color = '#E05252';
+    el.textContent = '⚠ Please create an event first before importing teams.';
+    setTimeout(() => { if (el) el.style.display = 'none'; }, 5000); return;
+  }
   if (count > 0) {
     el.style.background = '#3DB86E20';
     el.style.color = '#3DB86E';
@@ -1219,11 +1216,11 @@ function showImportMsg(elId, count, skipped) {
 
 async function importTeams(input) {
   const file = input.files[0];
-  if (!file) { alert('No file selected'); return; }
-  if (!root.activeEventId) { alert('Please create an event first before importing teams.'); input.value = ''; return; }
+  if (!file) return;
+  if (!root.activeEventId) { showImportMsg('import-teams-msg', -1, 0); input.value = ''; return; }
   const rows = await parseFileToRows(file);
   const names = rows.map(r => String(r[0]||'').trim()).filter(n => n.length > 0);
-  if (names.length === 0) { alert('File read but no names found.\n\nFirst 100 chars of file:\n' + (rows[0]||[]).join('|')); input.value=''; return; }
+  if (names.length === 0) { showImportMsg('import-teams-msg', 0, 0); input.value=''; return; }
   let added = 0, skipped = 0;
   names.forEach(name => {
     if ((state.teams||[]).find(t => t.name.toLowerCase() === name.toLowerCase())) { skipped++; return; }
@@ -1239,10 +1236,10 @@ async function importTeams(input) {
 
 async function importBettors(input) {
   const file = input.files[0];
-  if (!file) { alert('No file selected'); return; }
+  if (!file) return;
   const rows = await parseFileToRows(file);
   const names = rows.map(r => String(r[0]||'').trim()).filter(n => n.length > 0);
-  if (names.length === 0) { alert('File read but no names found.\n\nFirst 100 chars of file:\n' + (rows[0]||[]).join('|')); input.value=''; return; }
+  if (names.length === 0) { showImportMsg('import-bettors-msg', 0, 0); input.value=''; return; }
   let added = 0, skipped = 0;
   if (!root.bettors) root.bettors = [];
   names.forEach(name => {
@@ -1330,11 +1327,7 @@ renderTeams();
 renderBettors();
 updateTote();
 updateHeader();
-} catch(e) {
-  // Show error visibly on screen
-  document.body.innerHTML = '<div style="padding:40px;color:#E05252;font-family:monospace;font-size:14px;background:#111;min-height:100vh;"><strong>JS ERROR — please screenshot and send:</strong><br/><br/>' + e.message + '<br/><br/>' + e.stack + '</div>';
-}
-});
+
 </script>
 </body>
 </html>
