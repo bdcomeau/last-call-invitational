@@ -30,10 +30,10 @@
 
     #content { flex: 1; padding: 18px 14px 90px; overflow-y: auto; }
 
-    #tabbar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 620px;
+    #tabbar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 620px; touch-action: manipulation;
               background: #162219; border-top: 1px solid #2B4033; display: flex;
               padding-bottom: env(safe-area-inset-bottom, 0px); z-index: 20; }
-    #tabbar button { flex: 1; background: none; border: none; border-top: 2px solid transparent;
+    #tabbar button { flex: 1; background: none; border: none; border-top: 2px solid transparent; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
                      padding: 9px 4px 7px; display: flex; flex-direction: column; align-items: center;
                      gap: 2px; color: #7A9E89; transition: color .15s; }
     #tabbar button.active { color: #D4A843; border-top-color: #D4A843; }
@@ -137,7 +137,6 @@
       .bettor-card { break-inside: avoid; border: 1px solid #eee; margin-bottom: 4px; }
     }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -352,7 +351,7 @@
       </div>
     </div>
 
-    <div style="text-align:center;padding:8px 0 4px;font-size:10px;color:#2B4033;letter-spacing:1px;">v1.6</div>
+    <div style="text-align:center;padding:8px 0 4px;font-size:10px;color:#2B4033;letter-spacing:1px;">v1.7</div>
   </div><!-- /content -->
 
   <div id="tabbar">
@@ -975,30 +974,201 @@ function renderResults() {
 
 
 // ─── IMPORT ───────────────────────────────────────────────────────────────────
-function parseFileNames(file, callback) {
-  const reader = new FileReader();
-  const isCSV = file.name.toLowerCase().endsWith('.csv');
+// ─── FILE IMPORT (no external libraries needed) ─────────────────────────────
+// Parses both CSV and XLSX without any CDN dependency.
+// For XLSX we do a minimal binary parse: find shared strings table and sheet data,
+// extract cell values using regex — sufficient for simple flat spreadsheets.
+
+function parseXLSX(arrayBuffer) {
+  // XLSX files are ZIP archives. We use a simple approach:
+  // Convert to base64, then use a minimal ZIP extractor to get the XML files.
+  const bytes = new Uint8Array(arrayBuffer);
+
+  // Helper: find byte sequence in array
+  function findSeq(arr, seq, from) {
+    outer: for (let i = from || 0; i <= arr.length - seq.length; i++) {
+      for (let j = 0; j < seq.length; j++) if (arr[i+j] !== seq[j]) continue outer;
+      return i;
+    }
+    return -1;
+  }
+
+  // Helper: read little-endian uint32
+  function u32(arr, off) {
+    return (arr[off] | arr[off+1]<<8 | arr[off+2]<<16 | arr[off+3]<<24) >>> 0;
+  }
+  function u16(arr, off) { return arr[off] | arr[off+1]<<8; }
+
+  // Extract a named file from ZIP
+  function extractFile(name) {
+    const sig = [0x50,0x4B,0x03,0x04];
+    let pos = 0;
+    while (true) {
+      pos = findSeq(bytes, sig, pos);
+      if (pos < 0) return null;
+      const compMethod = u16(bytes, pos+8);
+      const compSize   = u32(bytes, pos+18);
+      const nameLen    = u16(bytes, pos+26);
+      const extraLen   = u16(bytes, pos+28);
+      const entryName  = String.fromCharCode(...bytes.slice(pos+30, pos+30+nameLen));
+      const dataStart  = pos + 30 + nameLen + extraLen;
+      if (entryName === name || entryName.endsWith('/' + name)) {
+        const data = bytes.slice(dataStart, dataStart + compSize);
+        if (compMethod === 0) {
+          return new TextDecoder().decode(data);
+        } else if (compMethod === 8) {
+          try {
+            return new TextDecoder().decode(pako_inflate(data));
+          } catch(e) {
+            // pako not available, try DecompressionStream
+            return null;
+          }
+        }
+        return null;
+      }
+      pos = dataStart + compSize;
+    }
+  }
+
+  // We need DecompressionStream for deflate (available in modern browsers/Safari 16+)
+  // Async version using DecompressionStream
+  async function extractFileAsync(name) {
+    const sig = [0x50,0x4B,0x03,0x04];
+    let pos = 0;
+    while (true) {
+      pos = findSeq(bytes, sig, pos);
+      if (pos < 0) return null;
+      const compMethod = u16(bytes, pos+8);
+      const compSize   = u32(bytes, pos+18);
+      const nameLen    = u16(bytes, pos+26);
+      const extraLen   = u16(bytes, pos+28);
+      const entryName  = String.fromCharCode(...bytes.slice(pos+30, pos+30+nameLen));
+      const dataStart  = pos + 30 + nameLen + extraLen;
+      if (entryName === name || entryName.endsWith('/' + name)) {
+        const data = bytes.slice(dataStart, dataStart + compSize);
+        if (compMethod === 0) {
+          return new TextDecoder().decode(data);
+        } else if (compMethod === 8) {
+          try {
+            const ds = new DecompressionStream('deflate-raw');
+            const writer = ds.writable.getWriter();
+            writer.write(data);
+            writer.close();
+            const chunks = [];
+            const reader = ds.readable.getReader();
+            while (true) {
+              const {done, value} = await reader.read();
+              if (done) break;
+              chunks.push(value);
+            }
+            const total = chunks.reduce((s,c) => s+c.length, 0);
+            const result = new Uint8Array(total);
+            let off = 0;
+            chunks.forEach(c => { result.set(c, off); off += c.length; });
+            return new TextDecoder().decode(result);
+          } catch(e) { return null; }
+        }
+        return null;
+      }
+      pos = dataStart + compSize;
+    }
+  }
+
+  return extractFileAsync;
+}
+
+async function readXLSXRows(arrayBuffer) {
+  const extractFileAsync = parseXLSX(arrayBuffer);
+
+  // Get shared strings
+  const ssXML  = await extractFileAsync('xl/sharedStrings.xml') || '';
+  const strings = [];
+  const siRe = /<si>[\s\S]*?<\/si>/g;
+  const tRe  = /<t[^>]*>([^<]*)<\/t>/g;
+  let siM;
+  while ((siM = siRe.exec(ssXML)) !== null) {
+    let text = '', tM;
+    const tRe2 = /<t[^>]*>([^<]*)<\/t>/g;
+    while ((tM = tRe2.exec(siM[0])) !== null) text += tM[1];
+    strings.push(text.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'"));
+  }
+
+  // Get first sheet
+  const sheetXML = await extractFileAsync('xl/worksheets/sheet1.xml') || '';
+
+  const rows = [];
+  const rowRe = /<row[^>]*>([\s\S]*?)<\/row>/g;
+  const cellRe = /<c\s([^>]*)>([\s\S]*?)<\/c>/g;
+  const vRe   = /<v>([^<]*)<\/v>/;
+  const rRe   = /r="([A-Z]+)(\d+)"/;
+  const tAttr = /t="([^"]+)"/;
+
+  let rowM;
+  while ((rowM = rowRe.exec(sheetXML)) !== null) {
+    const row = [];
+    let cellM;
+    const cellRe2 = /<c\s([^>]*)>([\s\S]*?)<\/c>/g;
+    while ((cellM = cellRe2.exec(rowM[1])) !== null) {
+      const attrs = cellM[1], inner = cellM[2];
+      const colM  = rRe.exec(attrs);
+      const colIdx = colM ? colLetterToIdx(colM[1]) : row.length;
+      while (row.length < colIdx) row.push('');
+      const typeM = tAttr.exec(attrs);
+      const vM    = vRe.exec(inner);
+      let val = '';
+      if (vM) {
+        if (typeM && typeM[1] === 's') {
+          val = strings[parseInt(vM[1])] || '';
+        } else {
+          val = vM[1];
+        }
+      }
+      row.push(val);
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+function colLetterToIdx(letters) {
+  let n = 0;
+  for (let i = 0; i < letters.length; i++) n = n * 26 + letters.charCodeAt(i) - 64;
+  return n - 1;
+}
+
+// Parse any file (CSV or XLSX) into an array of rows
+async function parseFileToRows(file) {
+  const isCSV = file.name.toLowerCase().match(/\.csv$/);
   if (isCSV) {
-    reader.onload = function(e) {
-      const lines = e.target.result.split(/\r?\n/);
-      const names = lines.map(l => l.split(',')[0].replace(/^"|"$/g,'').trim()).filter(n => n.length > 0);
-      callback(names);
-    };
-    reader.readAsText(file);
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const rows = e.target.result.split(/\r?\n/)
+          .map(l => l.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
+        resolve(rows);
+      };
+      reader.readAsText(file);
+    });
   } else {
-    reader.onload = function(e) {
-      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      const names = rows.map(r => String(r[0]||'').trim()).filter(n => n.length > 0);
-      callback(names);
-    };
-    reader.readAsArrayBuffer(file);
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = async e => {
+        try {
+          const rows = await readXLSXRows(e.target.result);
+          resolve(rows);
+        } catch(err) {
+          console.error('XLSX parse error:', err);
+          resolve([]);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
   }
 }
 
 function showImportMsg(elId, count, skipped) {
   const el = document.getElementById(elId);
+  if (!el) return;
   el.style.display = '';
   if (count > 0) {
     el.style.background = '#3DB86E20';
@@ -1007,126 +1177,106 @@ function showImportMsg(elId, count, skipped) {
   } else {
     el.style.background = '#E0525220';
     el.style.color = '#E05252';
-    el.textContent = '⚠ No new names found — check your file';
+    el.textContent = '⚠ No names found — save your file as CSV and try again';
   }
-  setTimeout(() => { el.style.display = 'none'; }, 4000);
+  setTimeout(() => { if (el) el.style.display = 'none'; }, 5000);
 }
 
-function importTeams(input) {
+async function importTeams(input) {
   const file = input.files[0];
   if (!file) return;
-  parseFileNames(file, function(names) {
-    let added = 0, skipped = 0;
-    names.forEach(name => {
-      if (state.teams.find(t => t.name.toLowerCase() === name.toLowerCase())) { skipped++; return; }
-      state.teams.push({ id: uid(), name });
-      added++;
-    });
-    save(); renderTeams(); updateHeader();
-    showImportMsg('import-teams-msg', added, skipped);
-    input.value = '';
+  const rows = await parseFileToRows(file);
+  const names = rows.map(r => String(r[0]||'').trim()).filter(n => n.length > 0);
+  let added = 0, skipped = 0;
+  names.forEach(name => {
+    if (state.teams.find(t => t.name.toLowerCase() === name.toLowerCase())) { skipped++; return; }
+    state.teams.push({ id: uid(), name });
+    added++;
   });
+  save(); renderTeams(); updateHeader();
+  showImportMsg('import-teams-msg', added, skipped);
+  input.value = '';
 }
 
-function importBettors(input) {
+async function importBettors(input) {
   const file = input.files[0];
   if (!file) return;
-  parseFileNames(file, function(names) {
-    let added = 0, skipped = 0;
-    names.forEach(name => {
-      if (state.bettors.find(b => b.name.toLowerCase() === name.toLowerCase())) { skipped++; return; }
-      state.bettors.push({ id: uid(), name, email: '', phone: '' });
-      added++;
-    });
-    save(); renderBettors(); updateHeader();
-    showImportMsg('import-bettors-msg', added, skipped);
-    input.value = '';
+  const rows = await parseFileToRows(file);
+  const names = rows.map(r => String(r[0]||'').trim()).filter(n => n.length > 0);
+  let added = 0, skipped = 0;
+  names.forEach(name => {
+    if (state.bettors.find(b => b.name.toLowerCase() === name.toLowerCase())) { skipped++; return; }
+    state.bettors.push({ id: uid(), name, email: '', phone: '' });
+    added++;
   });
+  save(); renderBettors(); updateHeader();
+  showImportMsg('import-bettors-msg', added, skipped);
+  input.value = '';
 }
 
-function importBets(input) {
+async function importBets(input) {
   const file = input.files[0];
   if (!file) return;
 
   const TYPE_MAP = {
-    'w': 'win', 'win': 'win',
-    'p': 'place', 'place': 'place',
-    's': 'show', 'show': 'show',
-    'wp': 'win-place', 'win-place': 'win-place',
-    'wps': 'win-place-show', 'win-place-show': 'win-place-show'
+    'w':'win','win':'win',
+    'p':'place','place':'place',
+    's':'show','show':'show',
+    'wp':'win-place','win-place':'win-place',
+    'wps':'win-place-show','win-place-show':'win-place-show'
   };
 
-  function parseRows(rows) {
-    let added = 0, errors = [];
-    rows.forEach((row, i) => {
-      const lineNum = i + 1;
-      const bettorRaw = String(row[0]||'').trim();
-      const teamRaw   = String(row[1]||'').trim();
-      const typeRaw   = String(row[2]||'').trim().toLowerCase();
-      const amountRaw = parseFloat(row[3]);
+  const rows = await parseFileToRows(file);
+  let added = 0, errors = [];
 
-      if (!bettorRaw && !teamRaw && !typeRaw) return; // skip blank rows
+  rows.forEach((row, i) => {
+    const lineNum   = i + 1;
+    const bettorRaw = String(row[0]||'').trim();
+    const teamRaw   = String(row[1]||'').trim();
+    const typeRaw   = String(row[2]||'').trim().toLowerCase();
+    const amountRaw = parseFloat(row[3]);
+    if (!bettorRaw && !teamRaw && !typeRaw) return;
 
-      // Validate each field and collect errors
-      const bettor = state.bettors.find(b => b.name.toLowerCase() === bettorRaw.toLowerCase());
-      if (!bettor) { errors.push('Row ' + lineNum + ': bettor "' + bettorRaw + '" not found'); return; }
+    const bettor = state.bettors.find(b => b.name.toLowerCase() === bettorRaw.toLowerCase());
+    if (!bettor) { errors.push('Row ' + lineNum + ': bettor "' + bettorRaw + '" not found'); return; }
 
-      const team = teamRaw.toLowerCase() === 'field' ? { id: 'FIELD' }
-                 : state.teams.find(t => t.name.toLowerCase() === teamRaw.toLowerCase());
-      if (!team) { errors.push('Row ' + lineNum + ': team "' + teamRaw + '" not found'); return; }
+    const team = teamRaw.toLowerCase() === 'field' ? { id: 'FIELD' }
+               : state.teams.find(t => t.name.toLowerCase() === teamRaw.toLowerCase());
+    if (!team) { errors.push('Row ' + lineNum + ': team "' + teamRaw + '" not found'); return; }
 
-      const comboType = TYPE_MAP[typeRaw];
-      if (!comboType) { errors.push('Row ' + lineNum + ': unknown type "' + typeRaw + '" (use W, P, S, WP, or WPS)'); return; }
+    const comboType = TYPE_MAP[typeRaw];
+    if (!comboType) { errors.push('Row ' + lineNum + ': unknown type "' + typeRaw + '" — use W P S WP WPS'); return; }
+    if (isNaN(amountRaw) || amountRaw <= 0) { errors.push('Row ' + lineNum + ': invalid amount'); return; }
 
-      if (isNaN(amountRaw) || amountRaw <= 0) { errors.push('Row ' + lineNum + ': invalid amount'); return; }
-
-      const betTypes = comboType === 'win-place'     ? ['win','place']        :
-                       comboType === 'win-place-show' ? ['win','place','show'] :
-                       [comboType];
-      const comboGroupId = betTypes.length > 1 ? uid() : null;
-      betTypes.forEach(t => {
-        state.bets.push({ id: uid(), bettorId: bettor.id, teamId: team.id, type: t, amount: amountRaw, combo: betTypes.length > 1 ? comboType : null, comboGroupId });
-      });
-      added++;
+    const betTypes = comboType === 'win-place' ? ['win','place'] :
+                     comboType === 'win-place-show' ? ['win','place','show'] : [comboType];
+    const comboGroupId = betTypes.length > 1 ? uid() : null;
+    betTypes.forEach(t => {
+      state.bets.push({ id: uid(), bettorId: bettor.id, teamId: team.id, type: t,
+                        amount: amountRaw, combo: betTypes.length > 1 ? comboType : null, comboGroupId });
     });
+    added++;
+  });
 
-    save(); renderWagers(); updateTote(); updateHeader();
+  save(); renderWagers(); updateTote(); updateHeader();
 
-    const msgEl = document.getElementById('import-bets-msg');
-    msgEl.style.display = '';
-    if (errors.length > 0) {
-      msgEl.style.background = '#E0525220';
-      msgEl.style.color = '#E05252';
-      msgEl.innerHTML = (added > 0 ? '✓ ' + added + ' bet' + (added>1?'s':'') + ' imported<br/>' : '') +
-        '⚠ ' + errors.length + ' error' + (errors.length>1?'s':'') + ':<br/>' +
-        errors.slice(0,5).map(e => '· ' + e).join('<br/>') +
-        (errors.length > 5 ? '<br/>· …and ' + (errors.length-5) + ' more' : '');
-    } else {
-      msgEl.style.background = '#3DB86E20';
-      msgEl.style.color = '#3DB86E';
-      msgEl.textContent = '✓ Imported ' + added + ' bet' + (added>1?'s':'');
-    }
-    setTimeout(() => { msgEl.style.display = 'none'; }, 6000);
-    input.value = '';
-  }
-
-  const reader = new FileReader();
-  const isCSV  = file.name.toLowerCase().endsWith('.csv');
-  if (isCSV) {
-    reader.onload = function(e) {
-      const rows = e.target.result.split(/\r?\n/).map(l => l.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
-      parseRows(rows);
-    };
-    reader.readAsText(file);
+  const msgEl = document.getElementById('import-bets-msg');
+  if (!msgEl) return;
+  msgEl.style.display = '';
+  if (errors.length > 0) {
+    msgEl.style.background = '#E0525220';
+    msgEl.style.color = '#E05252';
+    msgEl.innerHTML = (added > 0 ? '✓ ' + added + ' bet(s) imported<br/>' : '') +
+      '⚠ ' + errors.length + ' error(s):<br/>' +
+      errors.slice(0,5).map(e => '· ' + e).join('<br/>') +
+      (errors.length > 5 ? '<br/>· …and ' + (errors.length-5) + ' more' : '');
   } else {
-    reader.onload = function(e) {
-      const wb   = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      const ws   = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      parseRows(rows);
-    };
-    reader.readAsArrayBuffer(file);
+    msgEl.style.background = '#3DB86E20';
+    msgEl.style.color = '#3DB86E';
+    msgEl.textContent = '✓ Imported ' + added + ' bet(s)';
   }
+  setTimeout(() => { msgEl.style.display = 'none'; }, 6000);
+  input.value = '';
 }
 
 // ─── XSS escape ───────────────────────────────────────────────────────────────
