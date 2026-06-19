@@ -240,14 +240,28 @@
             <select id="bet-team"><option value="FIELD">🌐 Field — any team in this position</option></select>
           </div>
           <div class="field"><label>Bet Type</label>
-            <select id="bet-type">
+            <select id="bet-type" onchange="updateAmountHint()">
               <option value="win">WIN — must finish 1st</option>
               <option value="place">PLACE — must finish 1st or 2nd</option>
               <option value="show">SHOW — must finish 1st, 2nd, or 3rd</option>
+              <option value="win-place">WIN + PLACE — collect 2× amount</option>
+              <option value="win-place-show">WIN + PLACE + SHOW — collect 3× amount</option>
             </select>
           </div>
-          <div class="field"><label>Amount ($)</label><input type="number" id="bet-amount" placeholder="50" min="1" /></div>
+          <div class="field"><label>Amount per bet ($)</label><input type="number" id="bet-amount" placeholder="50" min="1" oninput="updateAmountHint()" /></div>
+          <div id="amount-hint" style="font-size:12px;color:#7A9E89;text-align:center;display:none;"></div>
           <button class="btn btn-primary" onclick="addBet()">Place Bet</button>
+          <div class="divider"></div>
+          <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import bets from spreadsheet —</div>
+          <label style="display:flex;align-items:center;justify-content:center;gap:8px;background:transparent;color:#D4A843;border:1px solid #8F6E2A;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;">
+            📂 Import Bets (Excel / CSV)
+            <input type="file" id="import-bets-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importBets(this)" />
+          </label>
+          <div style="font-size:10px;color:#7A9E89;text-align:center;line-height:1.6;">
+            4 columns: <strong style="color:#EDE8DC;">Bettor Name · Team Name · Type · Amount</strong><br/>
+            Type codes: W &nbsp;P &nbsp;S &nbsp;WP &nbsp;WPS
+          </div>
+          <div id="import-bets-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
         </div>
       </div>
       <div class="card" id="wagers-card" style="display:none;">
@@ -329,7 +343,7 @@
       </div>
     </div>
 
-    <div style="text-align:center;padding:8px 0 4px;font-size:10px;color:#2B4033;letter-spacing:1px;">v1.1</div>
+    <div style="text-align:center;padding:8px 0 4px;font-size:10px;color:#2B4033;letter-spacing:1px;">v1.4</div>
   </div><!-- /content -->
 
   <div id="tabbar">
@@ -491,11 +505,13 @@ function renderBettors() {
   if (!state.bettors.length) { card.style.display = 'none'; return; }
   card.style.display = '';
   const search = document.getElementById('bettor-search').value.toLowerCase();
-  const filtered = state.bettors.filter(b =>
-    b.name.toLowerCase().includes(search) ||
-    b.email.toLowerCase().includes(search) ||
-    b.phone.includes(search)
-  );
+  const filtered = state.bettors
+    .filter(b =>
+      b.name.toLowerCase().includes(search) ||
+      b.email.toLowerCase().includes(search) ||
+      b.phone.includes(search)
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
   count.textContent = filtered.length + ' of ' + state.bettors.length + ' bettors';
   list.innerHTML = filtered.map(b => {
     const betCount = state.bets.filter(bt => bt.bettorId === b.id).length;
@@ -521,9 +537,10 @@ function renderBetDropdowns() {
   const tSel = document.getElementById('bet-team');
   const curB = bSel.value, curT = tSel.value;
   bSel.innerHTML = '<option value="">— Select Bettor —</option>' +
-    state.bettors.map(b => `<option value="${b.id}"${b.id===curB?' selected':''}>${esc(b.name)}</option>`).join('');
-  tSel.innerHTML = '<option value="FIELD"🌐 Field — any team in this position</option>' +
-    state.teams.map(t => `<option value="${t.id}"${t.id===curT?' selected':''}>${esc(t.name)}</option>`).join('');
+    [...state.bettors].sort((a,b) => a.name.localeCompare(b.name))
+    .map(b => `<option value="${b.id}"${b.id===curB?' selected':''}>${esc(b.name)}</option>`).join('');
+  tSel.innerHTML = '<option value="FIELD">🌐 Field — any team in this position</option>' +
+    [...state.teams].sort((a,b) => a.name.localeCompare(b.name)).map(t => `<option value="${t.id}"${t.id===curT?' selected':''}>${esc(t.name)}</option>`).join('');
   if (curT && curT !== 'FIELD') tSel.value = curT;
 }
 
@@ -542,23 +559,57 @@ function updateTote() {
     `Handle (${state.handlePct}%): ${fmt(house)} · Net payout pool: ${fmt(total - house)}`;
 }
 
+function updateAmountHint() {
+  const type   = document.getElementById('bet-type').value;
+  const amount = parseFloat(document.getElementById('bet-amount').value) || 0;
+  const hint   = document.getElementById('amount-hint');
+  if (type === 'win-place' && amount > 0) {
+    hint.style.display = '';
+    hint.textContent = 'Collect ' + fmt(amount * 2) + ' from bettor (' + fmt(amount) + ' WIN + ' + fmt(amount) + ' PLACE)';
+  } else if (type === 'win-place-show' && amount > 0) {
+    hint.style.display = '';
+    hint.textContent = 'Collect ' + fmt(amount * 3) + ' from bettor (' + fmt(amount) + ' each × 3)';
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
 function addBet() {
   const bettorId = document.getElementById('bet-bettor').value;
   const teamId   = document.getElementById('bet-team').value;
   const type     = document.getElementById('bet-type').value;
   const amount   = parseFloat(document.getElementById('bet-amount').value);
   if (!bettorId || !amount || amount <= 0) return;
-  state.bets.push({ id: uid(), bettorId, teamId, type, amount });
+
+  // Expand combo bets into individual win/place/show bets
+  const betTypes = type === 'win-place'       ? ['win','place']       :
+                   type === 'win-place-show'   ? ['win','place','show'] :
+                   [type];
+
+  const comboGroupId = betTypes.length > 1 ? uid() : null;
+  betTypes.forEach(t => {
+    state.bets.push({ id: uid(), bettorId, teamId, type: t, amount, combo: betTypes.length > 1 ? type : null, comboGroupId });
+  });
+
   document.getElementById('bet-amount').value = '';
+  updateAmountHint();
   save(); renderWagers(); updateTote(); updateHeader();
 }
 
 function removeBet(id) {
-  state.bets = state.bets.filter(b => b.id !== id);
+  // If this bet is part of a combo group, remove all bets with the same comboGroupId
+  const bet = state.bets.find(b => b.id === id);
+  if (bet && bet.comboGroupId) {
+    state.bets = state.bets.filter(b => b.comboGroupId !== bet.comboGroupId);
+  } else {
+    state.bets = state.bets.filter(b => b.id !== id);
+  }
   save(); renderWagers(); updateTote(); updateHeader();
 }
 
 const TYPE_COLOR = { win: '#3DB86E', place: '#5AAEDD', show: '#B07FDE' };
+const TYPE_LABEL = { win: 'WIN', place: 'PLACE', show: 'SHOW' };
+const COMBO_LABEL = { 'win-place': 'WIN+PLACE', 'win-place-show': 'WIN+PLACE+SHOW' };
 
 function renderWagers() {
   const card  = document.getElementById('wagers-card');
@@ -567,24 +618,47 @@ function renderWagers() {
   if (!state.bets.length) { card.style.display = 'none'; return; }
   card.style.display = '';
   const search = (document.getElementById('wager-search').value || '').toLowerCase();
-  const filtered = [...state.bets].reverse().filter(b => {
-    if (!search) return true;
-    return (bettorById(b.bettorId)?.name||'').toLowerCase().includes(search)
-        || teamName(b.teamId).toLowerCase().includes(search)
-        || b.type.includes(search);
+
+  // Group combo bets together by comboGroupId; singles stand alone
+  const seen = new Set();
+  const groups = [];
+  [...state.bets].reverse().forEach(b => {
+    if (b.comboGroupId) {
+      if (!seen.has(b.comboGroupId)) {
+        seen.add(b.comboGroupId);
+        const legs = state.bets.filter(x => x.comboGroupId === b.comboGroupId);
+        groups.push({ isCombo: true, legs, rep: legs[0], total: legs.reduce((s,x)=>s+x.amount,0), comboType: b.combo });
+      }
+    } else {
+      groups.push({ isCombo: false, legs: [b], rep: b, total: b.amount, comboType: null });
+    }
   });
-  count.textContent = state.bets.length + ' wagers total';
-  list.innerHTML = filtered.map(b => `
-    <div class="list-row">
+
+  const filtered = groups.filter(g => {
+    if (!search) return true;
+    const bn = (bettorById(g.rep.bettorId)?.name||'').toLowerCase();
+    const tn = teamName(g.rep.teamId).toLowerCase();
+    return bn.includes(search) || tn.includes(search) || (g.comboType||g.rep.type).includes(search);
+  });
+
+  count.textContent = state.bets.length + ' wagers total (' + groups.length + ' entries)';
+
+  list.innerHTML = filtered.map(g => {
+    const typeDisplay = g.isCombo
+      ? `<span style="color:#D4A843;font-weight:700;font-size:11px;">${COMBO_LABEL[g.comboType]||g.comboType}</span>`
+      : `<span style="color:${TYPE_COLOR[g.rep.type]};font-weight:700;text-transform:uppercase;font-size:11px;">${TYPE_LABEL[g.rep.type]}</span>`;
+    const removeId = g.rep.id;
+    return `<div class="list-row">
       <div>
-        <div class="row-name">${esc(bettorById(b.bettorId)?.name || '?')}</div>
-        <div class="row-sub">${esc(teamName(b.teamId))} · <span style="color:${TYPE_COLOR[b.type]};font-weight:700;text-transform:uppercase;font-size:11px;">${b.type}</span></div>
+        <div class="row-name">${esc(bettorById(g.rep.bettorId)?.name || '?')}</div>
+        <div class="row-sub">${esc(teamName(g.rep.teamId))} · ${typeDisplay}</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
-        <span class="row-amount">${fmt(b.amount)}</span>
-        <button class="btn btn-danger" onclick="removeBet('${b.id}')">✕</button>
+        <span class="row-amount">${fmt(g.total)}</span>
+        <button class="btn btn-danger" onclick="removeBet('${removeId}')">✕</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ─── PLACEMENTS ───────────────────────────────────────────────────────────────
@@ -598,10 +672,10 @@ function renderPlacements() {
     const cur = state.placements[pos];
     const others = ['p1','p2','p3'].filter(p => p !== pos).map(p => state.placements[p]);
     sel.innerHTML = '<option value="">— Select Team —</option>' +
-      state.teams
+      [...state.teams]
         .filter(t => !others.includes(t.id) || t.id === cur)
+        .sort((a,b) => a.name.localeCompare(b.name))
         .map(t => `<option value="${t.id}"${t.id===cur?' selected':''}>${esc(t.name)}</option>`)
-        .join('');
     const nameEl = document.getElementById('pname-' + pos);
     const card = document.getElementById('pc-' + pos);
     if (cur) {
@@ -820,6 +894,91 @@ function importBettors(input) {
     showImportMsg('import-bettors-msg', added, skipped);
     input.value = '';
   });
+}
+
+function importBets(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const TYPE_MAP = {
+    'w': 'win', 'win': 'win',
+    'p': 'place', 'place': 'place',
+    's': 'show', 'show': 'show',
+    'wp': 'win-place', 'win-place': 'win-place',
+    'wps': 'win-place-show', 'win-place-show': 'win-place-show'
+  };
+
+  function parseRows(rows) {
+    let added = 0, errors = [];
+    rows.forEach((row, i) => {
+      const lineNum = i + 1;
+      const bettorRaw = String(row[0]||'').trim();
+      const teamRaw   = String(row[1]||'').trim();
+      const typeRaw   = String(row[2]||'').trim().toLowerCase();
+      const amountRaw = parseFloat(row[3]);
+
+      if (!bettorRaw && !teamRaw && !typeRaw) return; // skip blank rows
+
+      // Validate each field and collect errors
+      const bettor = state.bettors.find(b => b.name.toLowerCase() === bettorRaw.toLowerCase());
+      if (!bettor) { errors.push('Row ' + lineNum + ': bettor "' + bettorRaw + '" not found'); return; }
+
+      const team = teamRaw.toLowerCase() === 'field' ? { id: 'FIELD' }
+                 : state.teams.find(t => t.name.toLowerCase() === teamRaw.toLowerCase());
+      if (!team) { errors.push('Row ' + lineNum + ': team "' + teamRaw + '" not found'); return; }
+
+      const comboType = TYPE_MAP[typeRaw];
+      if (!comboType) { errors.push('Row ' + lineNum + ': unknown type "' + typeRaw + '" (use W, P, S, WP, or WPS)'); return; }
+
+      if (isNaN(amountRaw) || amountRaw <= 0) { errors.push('Row ' + lineNum + ': invalid amount'); return; }
+
+      const betTypes = comboType === 'win-place'     ? ['win','place']        :
+                       comboType === 'win-place-show' ? ['win','place','show'] :
+                       [comboType];
+      const comboGroupId = betTypes.length > 1 ? uid() : null;
+      betTypes.forEach(t => {
+        state.bets.push({ id: uid(), bettorId: bettor.id, teamId: team.id, type: t, amount: amountRaw, combo: betTypes.length > 1 ? comboType : null, comboGroupId });
+      });
+      added++;
+    });
+
+    save(); renderWagers(); updateTote(); updateHeader();
+
+    const msgEl = document.getElementById('import-bets-msg');
+    msgEl.style.display = '';
+    if (errors.length > 0) {
+      msgEl.style.background = '#E0525220';
+      msgEl.style.color = '#E05252';
+      msgEl.innerHTML = (added > 0 ? '✓ ' + added + ' bet' + (added>1?'s':'') + ' imported<br/>' : '') +
+        '⚠ ' + errors.length + ' error' + (errors.length>1?'s':'') + ':<br/>' +
+        errors.slice(0,5).map(e => '· ' + e).join('<br/>') +
+        (errors.length > 5 ? '<br/>· …and ' + (errors.length-5) + ' more' : '');
+    } else {
+      msgEl.style.background = '#3DB86E20';
+      msgEl.style.color = '#3DB86E';
+      msgEl.textContent = '✓ Imported ' + added + ' bet' + (added>1?'s':'');
+    }
+    setTimeout(() => { msgEl.style.display = 'none'; }, 6000);
+    input.value = '';
+  }
+
+  const reader = new FileReader();
+  const isCSV  = file.name.toLowerCase().endsWith('.csv');
+  if (isCSV) {
+    reader.onload = function(e) {
+      const rows = e.target.result.split(/\r?\n/).map(l => l.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
+      parseRows(rows);
+    };
+    reader.readAsText(file);
+  } else {
+    reader.onload = function(e) {
+      const wb   = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      parseRows(rows);
+    };
+    reader.readAsArrayBuffer(file);
+  }
 }
 
 // ─── XSS escape ───────────────────────────────────────────────────────────────
