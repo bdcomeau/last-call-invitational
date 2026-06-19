@@ -176,11 +176,8 @@
           <button class="btn btn-primary" onclick="addTeam()">+ Add Team</button>
           <div class="divider"></div>
           <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import a list —</div>
-          <label style="display:flex;align-items:center;justify-content:center;gap:8px;background:transparent;color:#D4A843;border:1px solid #8F6E2A;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;">
-            📂 Import Excel / CSV
-            <input type="file" id="import-teams-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importTeams(this)" />
-          </label>
-          <div style="font-size:10px;color:#7A9E89;text-align:center;">One team name per row, first column</div>
+          <div style="font-size:10px;color:#7A9E89;text-align:center;">One team name per row, first column (CSV or Excel)</div>
+          <input type="file" id="import-teams-file" accept=".xlsx,.xls,.csv,.numbers" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importTeams(this)" />
           <div id="import-teams-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
         </div>
       </div>
@@ -201,11 +198,8 @@
           <button class="btn btn-primary" onclick="addBettor()">+ Add Bettor</button>
           <div class="divider"></div>
           <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import a list —</div>
-          <label style="display:flex;align-items:center;justify-content:center;gap:8px;background:transparent;color:#D4A843;border:1px solid #8F6E2A;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;">
-            📂 Import Excel / CSV
-            <input type="file" id="import-bettors-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importBettors(this)" />
-          </label>
-          <div style="font-size:10px;color:#7A9E89;text-align:center;">One name per row, first column</div>
+          <div style="font-size:10px;color:#7A9E89;text-align:center;">One name per row, first column (CSV or Excel)</div>
+          <input type="file" id="import-bettors-file" accept=".xlsx,.xls,.csv,.numbers" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBettors(this)" />
           <div id="import-bettors-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
         </div>
       </div>
@@ -251,14 +245,11 @@
           <button class="btn btn-primary" onclick="addBet()">Place Bet</button>
           <div class="divider"></div>
           <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import bets from spreadsheet —</div>
-          <label style="display:flex;align-items:center;justify-content:center;gap:8px;background:transparent;color:#D4A843;border:1px solid #8F6E2A;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;">
-            📂 Import Bets (Excel / CSV)
-            <input type="file" id="import-bets-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importBets(this)" />
-          </label>
           <div style="font-size:10px;color:#7A9E89;text-align:center;line-height:1.6;">
             4 columns: <strong style="color:#EDE8DC;">Bettor Name · Team Name · Type · Amount</strong><br/>
             Type codes: W &nbsp;P &nbsp;S &nbsp;WP &nbsp;WPS
           </div>
+          <input type="file" id="import-bets-file" accept=".xlsx,.xls,.csv,.numbers" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBets(this)" />
           <div id="import-bets-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
         </div>
       </div>
@@ -352,7 +343,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v2.3</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v2.4</div>
 
   <div id="tabbar">
     <button class="active" onclick="showTab('setup')"><span class="tab-icon">⚙️</span><span class="tab-label">SETUP</span></button>
