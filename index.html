@@ -377,7 +377,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v4.0</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v4.1</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -962,7 +962,7 @@ function printTicket() {
   const bets   = state.bets.filter(b => b.bettorId === bettorId);
   if (!bets.length) { alert('No bets found for this bettor.'); return; }
 
-  // Group combo legs for display
+  // Group by comboGroupId first, then show remaining singles
   const seen = new Set();
   const groups = [];
   bets.forEach(b => {
@@ -970,24 +970,29 @@ function printTicket() {
       if (!seen.has(b.comboGroupId)) {
         seen.add(b.comboGroupId);
         const legs = bets.filter(x => x.comboGroupId === b.comboGroupId);
-        groups.push({ isCombo:true, legs, teamId:b.teamId, comboType:b.combo, amount:legs[0].amount, total:legs.reduce((s,x)=>s+x.amount,0) });
+        legs.forEach(x => seen.add(x.id));
+        const typeLabel = b.combo === 'win-place' ? 'WIN + PLACE' :
+                          b.combo === 'win-place-show' ? 'WIN + PLACE + SHOW' :
+                          b.combo ? b.combo.toUpperCase() : legs.map(x=>x.type.toUpperCase()).join(' + ');
+        groups.push({ teamId:b.teamId, typeLabel, unitAmount: b.unitAmount||b.amount, total: legs.reduce((s,x)=>s+x.amount,0) });
       }
-    } else {
-      groups.push({ isCombo:false, legs:[b], teamId:b.teamId, comboType:null, amount:b.amount, total:b.amount, type:b.type });
+    } else if (!seen.has(b.id)) {
+      seen.add(b.id);
+      groups.push({ teamId:b.teamId, typeLabel:b.type.toUpperCase(), unitAmount:b.unitAmount||b.amount, total:b.amount });
     }
   });
 
   const totalWagered = groups.reduce((s,g) => s + g.total, 0);
   const now = new Date().toLocaleString('en-CA', { dateStyle:'medium', timeStyle:'short' });
-  const COMBO_DISPLAY = { 'win-place':'WIN + PLACE', 'win-place-show':'WIN + PLACE + SHOW' };
 
   const rows = groups.map(g => {
-    const typeDisplay = g.isCombo ? (COMBO_DISPLAY[g.comboType]||g.comboType) : g.type.toUpperCase();
-    const collected   = g.isCombo ? fmt(g.total) + ' (' + fmt(g.amount) + ' x ' + g.legs.length + ')' : fmt(g.total);
+    const amountDisplay = g.total !== g.unitAmount
+      ? fmt(g.total) + ' (' + fmt(g.unitAmount) + ' ea)'
+      : fmt(g.total);
     return '<tr>' +
       '<td style="padding:8px 10px;border-bottom:1px solid #ddd;">' + esc(teamName(g.teamId)) + '</td>' +
-      '<td style="padding:8px 10px;border-bottom:1px solid #ddd;font-weight:700;">' + typeDisplay + '</td>' +
-      '<td style="padding:8px 10px;border-bottom:1px solid #ddd;text-align:right;">' + collected + '</td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid #ddd;font-weight:700;">' + g.typeLabel + '</td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid #ddd;text-align:right;">' + amountDisplay + '</td>' +
     '</tr>';
   }).join('');
 
@@ -1029,13 +1034,25 @@ function closeTicket() {
 }
 
 function printTicketOverlay() {
-  const body = document.getElementById('ticket-overlay-body').innerHTML;
-  const w = window.open('', '_blank');
-  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Ticket</title>' +
-    '<style>body{font-family:Arial,sans-serif;padding:20px;max-width:420px;margin:0 auto;}</style></head><body>' + body + '</body></html>');
-  w.document.close();
-  w.focus();
-  setTimeout(function(){ w.print(); }, 300);
+  // Add a temporary print style that shows ONLY the ticket overlay body
+  const styleId = 'ticket-print-style';
+  let s = document.getElementById(styleId);
+  if (!s) {
+    s = document.createElement('style');
+    s.id = styleId;
+    s.textContent = '@media print { body > * { display:none !important; } #ticket-print-wrapper { display:block !important; position:fixed; top:0; left:0; width:100%; background:#fff; color:#000; padding:20px; font-family:Arial,sans-serif; } }';
+    document.head.appendChild(s);
+  }
+  // Create or update a top-level print wrapper
+  let wrapper = document.getElementById('ticket-print-wrapper');
+  if (!wrapper) {
+    wrapper = document.createElement('div');
+    wrapper.id = 'ticket-print-wrapper';
+    wrapper.style.display = 'none';
+    document.body.appendChild(wrapper);
+  }
+  wrapper.innerHTML = document.getElementById('ticket-overlay-body').innerHTML;
+  window.print();
 }
 
 // ─── PLACEMENTS ───────────────────────────────────────────────────────────────
