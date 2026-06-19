@@ -235,7 +235,7 @@
       <div class="card" style="border-color:#E0525244;">
         <div style="font-size:13px;font-weight:700;color:#E05252;margin-bottom:6px;">⚠️ Reset Event Data</div>
         <div style="font-size:11px;color:#7A9E89;margin-bottom:14px;line-height:1.6;">
-          Removes <strong style="color:#EDE8DC;">all teams, all bettors, and all bets</strong> for this event. Bettors shared across other events are also cleared. This cannot be undone.
+          Removes <strong style="color:#EDE8DC;">all teams and all bets</strong> for this event and resets placements. Bettors are shared across events and will <strong style="color:#EDE8DC;">not</strong> be removed.
         </div>
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;text-align:center;">Slide to confirm reset →</div>
         <div style="position:relative;height:44px;background:#162219;border:1px solid #E0525244;border-radius:22px;overflow:hidden;">
@@ -403,7 +403,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v4.6</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v4.7</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -703,15 +703,12 @@ function esc(str) {
 
 // ─── RESET ────────────────────────────────────────────────────────────────────
 function resetEventData() {
-  state.teams     = [];
-  state.bets      = [];
+  state.teams      = [];
+  state.bets       = [];
   state.placements = { p1:'', p2:'', p3:'' };
-  root.bettors    = [];
-  state.bettors   = [];
   syncRootFromState();
   save();
   renderTeams();
-  renderBettors();
   updateTote();
   updateHeader();
   const succ = document.getElementById('reset-success');
