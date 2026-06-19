@@ -192,8 +192,8 @@
           <button class="btn btn-primary" onclick="addTeam()">+ Add Team</button>
           <div class="divider"></div>
           <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import a list —</div>
-          <div style="font-size:10px;color:#7A9E89;text-align:center;">One team name per row, first column (CSV or Excel)</div>
-          <input type="file" id="import-teams-file" accept=".xlsx,.xls,.csv,.numbers" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importTeams(this)" />
+          <div style="font-size:10px;color:#7A9E89;text-align:center;">Save as <strong style="color:#EDE8DC;">CSV</strong> from Excel/Numbers first · one name per row</div>
+          <input type="file" id="import-teams-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importTeams(this)" />
           <div id="import-teams-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
         </div>
       </div>
@@ -214,8 +214,8 @@
           <button class="btn btn-primary" onclick="addBettor()">+ Add Bettor</button>
           <div class="divider"></div>
           <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import a list —</div>
-          <div style="font-size:10px;color:#7A9E89;text-align:center;">One name per row, first column (CSV or Excel)</div>
-          <input type="file" id="import-bettors-file" accept=".xlsx,.xls,.csv,.numbers" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBettors(this)" />
+          <div style="font-size:10px;color:#7A9E89;text-align:center;">Save as <strong style="color:#EDE8DC;">CSV</strong> from Excel/Numbers first · one name per row</div>
+          <input type="file" id="import-bettors-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBettors(this)" />
           <div id="import-bettors-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
         </div>
       </div>
@@ -261,11 +261,8 @@
           <button class="btn btn-primary" onclick="addBet()">Place Bet</button>
           <div class="divider"></div>
           <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import bets from spreadsheet —</div>
-          <div style="font-size:10px;color:#7A9E89;text-align:center;line-height:1.6;">
-            4 columns: <strong style="color:#EDE8DC;">Bettor Name · Team Name · Type · Amount</strong><br/>
-            Type codes: W &nbsp;P &nbsp;S &nbsp;WP &nbsp;WPS
-          </div>
-          <input type="file" id="import-bets-file" accept=".xlsx,.xls,.csv,.numbers" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBets(this)" />
+          <div style="font-size:10px;color:#7A9E89;text-align:center;line-height:1.6;">Save as <strong style="color:#EDE8DC;">CSV</strong> from Excel/Numbers first<br/>4 columns: Bettor · Team · Type (W P S WP WPS) · Amount</div>
+          <input type="file" id="import-bets-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBets(this)" />
           <div id="import-bets-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
         </div>
       </div>
@@ -359,7 +356,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v2.5</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v2.6</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -1143,191 +1140,39 @@ function renderResults() {
 // For XLSX we do a minimal binary parse: find shared strings table and sheet data,
 // extract cell values using regex — sufficient for simple flat spreadsheets.
 
-function parseXLSX(arrayBuffer) {
-  // XLSX files are ZIP archives. We use a simple approach:
-  // Convert to base64, then use a minimal ZIP extractor to get the XML files.
-  const bytes = new Uint8Array(arrayBuffer);
+// ─── FILE PARSING ────────────────────────────────────────────────────────────
+// Reads any file as text and parses rows/columns.
+// Works with CSV, TSV, and plain text lists.
+// For Excel: save as CSV first (File → Save As → CSV in Excel,
+//            or File → Export → CSV in Numbers / Google Sheets)
 
-  // Helper: find byte sequence in array
-  function findSeq(arr, seq, from) {
-    outer: for (let i = from || 0; i <= arr.length - seq.length; i++) {
-      for (let j = 0; j < seq.length; j++) if (arr[i+j] !== seq[j]) continue outer;
-      return i;
-    }
-    return -1;
-  }
-
-  // Helper: read little-endian uint32
-  function u32(arr, off) {
-    return (arr[off] | arr[off+1]<<8 | arr[off+2]<<16 | arr[off+3]<<24) >>> 0;
-  }
-  function u16(arr, off) { return arr[off] | arr[off+1]<<8; }
-
-  // Extract a named file from ZIP
-  function extractFile(name) {
-    const sig = [0x50,0x4B,0x03,0x04];
-    let pos = 0;
-    while (true) {
-      pos = findSeq(bytes, sig, pos);
-      if (pos < 0) return null;
-      const compMethod = u16(bytes, pos+8);
-      const compSize   = u32(bytes, pos+18);
-      const nameLen    = u16(bytes, pos+26);
-      const extraLen   = u16(bytes, pos+28);
-      const entryName  = String.fromCharCode(...bytes.slice(pos+30, pos+30+nameLen));
-      const dataStart  = pos + 30 + nameLen + extraLen;
-      if (entryName === name || entryName.endsWith('/' + name)) {
-        const data = bytes.slice(dataStart, dataStart + compSize);
-        if (compMethod === 0) {
-          return new TextDecoder().decode(data);
-        } else if (compMethod === 8) {
-          try {
-            return new TextDecoder().decode(pako_inflate(data));
-          } catch(e) {
-            // pako not available, try DecompressionStream
-            return null;
-          }
+function parseFileToRows(file) {
+  return new Promise(function(resolve) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const text = e.target.result;
+      // Detect delimiter: tab if tabs found, otherwise comma
+      const hasTab  = text.indexOf('\t') !== -1;
+      const delim   = hasTab ? '\t' : ',';
+      const rows = text.split(/\r?\n/).map(function(line) {
+        // Handle quoted fields
+        const cols = [];
+        let cur = '', inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') { inQ = !inQ; }
+          else if (ch === delim && !inQ) { cols.push(cur.trim()); cur = ''; }
+          else { cur += ch; }
         }
-        return null;
-      }
-      pos = dataStart + compSize;
-    }
-  }
-
-  // We need DecompressionStream for deflate (available in modern browsers/Safari 16+)
-  // Async version using DecompressionStream
-  async function extractFileAsync(name) {
-    const sig = [0x50,0x4B,0x03,0x04];
-    let pos = 0;
-    while (true) {
-      pos = findSeq(bytes, sig, pos);
-      if (pos < 0) return null;
-      const compMethod = u16(bytes, pos+8);
-      const compSize   = u32(bytes, pos+18);
-      const nameLen    = u16(bytes, pos+26);
-      const extraLen   = u16(bytes, pos+28);
-      const entryName  = String.fromCharCode(...bytes.slice(pos+30, pos+30+nameLen));
-      const dataStart  = pos + 30 + nameLen + extraLen;
-      if (entryName === name || entryName.endsWith('/' + name)) {
-        const data = bytes.slice(dataStart, dataStart + compSize);
-        if (compMethod === 0) {
-          return new TextDecoder().decode(data);
-        } else if (compMethod === 8) {
-          try {
-            const ds = new DecompressionStream('deflate-raw');
-            const writer = ds.writable.getWriter();
-            writer.write(data);
-            writer.close();
-            const chunks = [];
-            const reader = ds.readable.getReader();
-            while (true) {
-              const {done, value} = await reader.read();
-              if (done) break;
-              chunks.push(value);
-            }
-            const total = chunks.reduce((s,c) => s+c.length, 0);
-            const result = new Uint8Array(total);
-            let off = 0;
-            chunks.forEach(c => { result.set(c, off); off += c.length; });
-            return new TextDecoder().decode(result);
-          } catch(e) { return null; }
-        }
-        return null;
-      }
-      pos = dataStart + compSize;
-    }
-  }
-
-  return extractFileAsync;
-}
-
-async function readXLSXRows(arrayBuffer) {
-  const extractFileAsync = parseXLSX(arrayBuffer);
-
-  // Get shared strings
-  const ssXML  = await extractFileAsync('xl/sharedStrings.xml') || '';
-  const strings = [];
-  const siRe = /<si>[\s\S]*?<\/si>/g;
-  const tRe  = /<t[^>]*>([^<]*)<\/t>/g;
-  let siM;
-  while ((siM = siRe.exec(ssXML)) !== null) {
-    let text = '', tM;
-    const tRe2 = /<t[^>]*>([^<]*)<\/t>/g;
-    while ((tM = tRe2.exec(siM[0])) !== null) text += tM[1];
-    strings.push(text.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'"));
-  }
-
-  // Get first sheet
-  const sheetXML = await extractFileAsync('xl/worksheets/sheet1.xml') || '';
-
-  const rows = [];
-  const rowRe = /<row[^>]*>([\s\S]*?)<\/row>/g;
-  const cellRe = /<c\s([^>]*)>([\s\S]*?)<\/c>/g;
-  const vRe   = /<v>([^<]*)<\/v>/;
-  const rRe   = /r="([A-Z]+)(\d+)"/;
-  const tAttr = /t="([^"]+)"/;
-
-  let rowM;
-  while ((rowM = rowRe.exec(sheetXML)) !== null) {
-    const row = [];
-    let cellM;
-    const cellRe2 = /<c\s([^>]*)>([\s\S]*?)<\/c>/g;
-    while ((cellM = cellRe2.exec(rowM[1])) !== null) {
-      const attrs = cellM[1], inner = cellM[2];
-      const colM  = rRe.exec(attrs);
-      const colIdx = colM ? colLetterToIdx(colM[1]) : row.length;
-      while (row.length < colIdx) row.push('');
-      const typeM = tAttr.exec(attrs);
-      const vM    = vRe.exec(inner);
-      let val = '';
-      if (vM) {
-        if (typeM && typeM[1] === 's') {
-          val = strings[parseInt(vM[1])] || '';
-        } else {
-          val = vM[1];
-        }
-      }
-      row.push(val);
-    }
-    rows.push(row);
-  }
-  return rows;
-}
-
-function colLetterToIdx(letters) {
-  let n = 0;
-  for (let i = 0; i < letters.length; i++) n = n * 26 + letters.charCodeAt(i) - 64;
-  return n - 1;
-}
-
-// Parse any file (CSV or XLSX) into an array of rows
-async function parseFileToRows(file) {
-  const isCSV = file.name.toLowerCase().match(/\.csv$/);
-  if (isCSV) {
-    return new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const rows = e.target.result.split(/\r?\n/)
-          .map(l => l.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
-        resolve(rows);
-      };
-      reader.readAsText(file);
-    });
-  } else {
-    return new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = async e => {
-        try {
-          const rows = await readXLSXRows(e.target.result);
-          resolve(rows);
-        } catch(err) {
-          console.error('XLSX parse error:', err);
-          resolve([]);
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    });
-  }
+        cols.push(cur.trim());
+        return cols;
+      });
+      resolve(rows);
+    };
+    reader.onerror = function() { resolve([]); };
+    // Always read as text — works for CSV, TSV, and even some xlsx if saved as CSV
+    reader.readAsText(file);
+  });
 }
 
 function showImportMsg(elId, count, skipped) {
@@ -1341,7 +1186,7 @@ function showImportMsg(elId, count, skipped) {
   } else {
     el.style.background = '#E0525220';
     el.style.color = '#E05252';
-    el.textContent = '⚠ No names found — save your file as CSV and try again';
+    el.textContent = '⚠ No data found. In Excel: File → Save As → CSV. In Numbers: File → Export → CSV. Then try again.';
   }
   setTimeout(() => { if (el) el.style.display = 'none'; }, 5000);
 }
