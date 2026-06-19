@@ -1,7 +1,5 @@
-// Last Call Invitational — Service Worker v4.2
-// Caches the app for offline use
-
-const CACHE = 'lci-v4.2';
+// Last Call Invitational — Service Worker v4.6
+const CACHE = 'lci-v4.6';
 const ASSETS = [
   '/last-call-invitational/',
   '/last-call-invitational/index.html',
