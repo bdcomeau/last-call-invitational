@@ -330,21 +330,21 @@
         <div class="card" id="results-podium"></div>
         <!-- Pool summary -->
         <div class="card">
-          <div style="font-family:'Barlow Condensed';font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">POOL SUMMARY</div>
+          <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">POOL SUMMARY</div>
           <div class="pool-grid" id="pool-grid"></div>
           <div style="text-align:right;margin-top:10px;font-size:12px;font-weight:700;" id="balance-msg"></div>
         </div>
         <!-- Reconciliation -->
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <div style="font-family:'Barlow Condensed';font-size:11px;color:#8F6E2A;letter-spacing:2px;">BETTOR RECONCILIATION</div>
+            <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;">BETTOR RECONCILIATION</div>
             <button class="btn btn-ghost btn-sm no-print" onclick="window.print()">🖨 Print</button>
           </div>
           <div class="scroll-list scroll-list-tall" id="recon-list"></div>
           <div class="divider"></div>
           <div style="display:flex;justify-content:space-between;align-items:flex-end;">
             <div style="font-size:12px;color:#7A9E89;line-height:1.8;" id="recon-totals"></div>
-            <div style="font-family:'Barlow Condensed';font-size:20px;font-weight:700;" id="recon-balance"></div>
+            <div style="font-family:Barlow Condensed;font-size:20px;font-weight:700;" id="recon-balance"></div>
           </div>
         </div>
       </div>
@@ -352,7 +352,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v2.2</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v2.3</div>
 
   <div id="tabbar">
     <button class="active" onclick="showTab('setup')"><span class="tab-icon">⚙️</span><span class="tab-label">SETUP</span></button>
@@ -471,7 +471,7 @@ function renderTeams() {
   list.innerHTML = state.teams.map((t, i) => `
     <div class="list-row">
       <div>
-        <span style="font-family:'Barlow Condensed';font-size:17px;font-weight:700;color:#D4A843;">#${i+1} ${esc(t.name)}</span>
+        <span style="font-family:Barlow Condensed;font-size:17px;font-weight:700;color:#D4A843;">#${i+1} ${esc(t.name)}</span>
         
       </div>
       <button class="btn btn-danger" onclick="removeTeam('${t.id}')">✕</button>
@@ -892,13 +892,13 @@ function renderResults() {
   const pills  = ['WIN · PLACE · SHOW','PLACE · SHOW','SHOW'];
   const pillColors = ['#D4A843','#C0C0C0','#CD7F32'];
   document.getElementById('results-podium').innerHTML =
-    '<div style="font-family:'Barlow Condensed';font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">FINAL STANDINGS</div>' +
+    '<div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">FINAL STANDINGS</div>' +
     [p1,p2,p3].map((id,i) => {
       const t = teamById(id);
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;' + (i<2?'border-bottom:1px solid #2B4033;':'') + '">' +
         '<div style="display:flex;align-items:center;gap:10px;">' +
           '<span style="font-size:26px;">' + medals[i] + '</span>' +
-          '<div style="font-family:'Barlow Condensed';font-size:20px;font-weight:700;">' + esc(t?.name||'?') + '</div>' +
+          '<div style="font-family:Barlow Condensed;font-size:20px;font-weight:700;">' + esc(t?.name||'?') + '</div>' +
         '</div>' +
         '<span class="pill" style="background:' + pillColors[i] + '20;color:' + pillColors[i] + ';border:1px solid ' + pillColors[i] + '40;">' + pills[i] + '</span>' +
       '</div>';
