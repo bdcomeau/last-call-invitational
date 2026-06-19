@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=auto" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=auto" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="Last Call" />
@@ -230,6 +230,23 @@
         <div style="font-size:11px;color:#7A9E89;margin-bottom:10px;" id="teams-count"></div>
         <div class="scroll-list" id="teams-list"></div>
       </div>
+
+      <!-- Reset card -->
+      <div class="card" style="border-color:#E0525244;">
+        <div style="font-size:13px;font-weight:700;color:#E05252;margin-bottom:6px;">⚠️ Reset Event Data</div>
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:14px;line-height:1.6;">
+          Removes <strong style="color:#EDE8DC;">all teams, all bettors, and all bets</strong> for this event. Bettors shared across other events are also cleared. This cannot be undone.
+        </div>
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;text-align:center;">Slide to confirm reset →</div>
+        <div style="position:relative;height:44px;background:#162219;border:1px solid #E0525244;border-radius:22px;overflow:hidden;">
+          <div id="reset-track-fill" style="position:absolute;left:0;top:0;bottom:0;width:44px;background:#E0525233;border-radius:22px;transition:width .05s;pointer-events:none;"></div>
+          <div id="reset-thumb" style="position:absolute;left:0;top:0;width:44px;height:44px;background:#E05252;border-radius:22px;display:flex;align-items:center;justify-content:center;cursor:grab;user-select:none;touch-action:none;z-index:2;">
+            <span style="font-size:18px;">🗑</span>
+          </div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#E0525266;pointer-events:none;padding-left:50px;">SLIDE TO RESET</div>
+        </div>
+        <div id="reset-success" style="display:none;text-align:center;padding:10px;font-size:13px;color:#E05252;font-weight:700;">✓ Reset complete</div>
+      </div>
     </div>
 
     <!-- BETTORS -->
@@ -386,7 +403,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v4.2</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v4.5</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -684,6 +701,88 @@ function esc(str) {
 }
 
 
+// ─── RESET ────────────────────────────────────────────────────────────────────
+function resetEventData() {
+  state.teams     = [];
+  state.bets      = [];
+  state.placements = { p1:'', p2:'', p3:'' };
+  root.bettors    = [];
+  state.bettors   = [];
+  syncRootFromState();
+  save();
+  renderTeams();
+  renderBettors();
+  updateTote();
+  updateHeader();
+  const succ = document.getElementById('reset-success');
+  if (succ) { succ.style.display = ''; setTimeout(() => { succ.style.display = 'none'; }, 3000); }
+}
+
+function initResetSlider() {
+  const thumb = document.getElementById('reset-thumb');
+  const fill  = document.getElementById('reset-track-fill');
+  if (!thumb || !fill) return;
+
+  const track = thumb.parentElement;
+  let dragging = false, startX = 0, currentX = 0;
+
+  function getTrackWidth() { return track.offsetWidth - 44; }
+
+  function onStart(e) {
+    dragging = true;
+    startX = (e.touches ? e.touches[0].clientX : e.clientX) - currentX;
+    thumb.style.cursor = 'grabbing';
+    e.preventDefault();
+  }
+
+  function onMove(e) {
+    if (!dragging) return;
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - startX;
+    const max = getTrackWidth();
+    currentX = Math.max(0, Math.min(x, max));
+    thumb.style.left = currentX + 'px';
+    fill.style.width = (currentX + 44) + 'px';
+    e.preventDefault();
+  }
+
+  function onEnd() {
+    if (!dragging) return;
+    dragging = false;
+    thumb.style.cursor = 'grab';
+    const max = getTrackWidth();
+    if (currentX >= max * 0.9) {
+      // Fully slid — execute reset
+      thumb.style.left = max + 'px';
+      fill.style.width = (max + 44) + 'px';
+      setTimeout(() => {
+        resetEventData();
+        // Snap back after reset
+        currentX = 0;
+        thumb.style.transition = 'left .3s';
+        fill.style.transition  = 'width .3s';
+        thumb.style.left = '0px';
+        fill.style.width = '44px';
+        setTimeout(() => { thumb.style.transition = ''; fill.style.transition = ''; }, 350);
+      }, 200);
+    } else {
+      // Snap back
+      thumb.style.transition = 'left .2s';
+      fill.style.transition  = 'width .2s';
+      currentX = 0;
+      thumb.style.left = '0px';
+      fill.style.width = '44px';
+      setTimeout(() => { thumb.style.transition = ''; fill.style.transition = ''; }, 250);
+    }
+  }
+
+  thumb.addEventListener('mousedown',  onStart, { passive: false });
+  thumb.addEventListener('touchstart', onStart, { passive: false });
+  document.addEventListener('mousemove',  onMove, { passive: false });
+  document.addEventListener('touchmove',  onMove, { passive: false });
+  document.addEventListener('mouseup',  onEnd);
+  document.addEventListener('touchend', onEnd);
+}
+
 // ─── Boot & event listeners ─────────────────────────────────────────────────
 document.getElementById('tournament-name').addEventListener('input', function() {
   state.tournamentName = this.value;
@@ -707,6 +806,13 @@ function addTeam() {
 }
 
 function removeTeam(id) {
+  const team = state.teams.find(t => t.id === id);
+  if (!team) return;
+  const betCount = state.bets.filter(b => b.teamId === id).length;
+  const msg = 'Delete team "' + team.name + '"?' +
+    (betCount > 0 ? '\n\nWarning: ' + betCount + ' bet' + (betCount > 1 ? 's are' : ' is') + ' placed on this team and will also be removed.' : '');
+  if (!confirm(msg)) return;
+  state.bets = state.bets.filter(b => b.teamId !== id);
   state.teams = state.teams.filter(t => t.id !== id);
   if (state.placements.p1 === id) state.placements.p1 = '';
   if (state.placements.p2 === id) state.placements.p2 = '';
@@ -1468,6 +1574,7 @@ renderBettors();
 renderEvents();
 updateTote();
 updateHeader();
+initResetSlider();
 
 // ─── Service Worker Registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
