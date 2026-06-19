@@ -30,7 +30,8 @@
 
     #content { padding: 18px 14px 40px; }
 
-    #tabbar { background: #162219; border-top: 1px solid #2B4033; display: flex;
+    #tabbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 999;
+              background: #162219; border-top: 1px solid #2B4033; display: flex;
               padding-bottom: env(safe-area-inset-bottom, 0px); }
     #tabbar button { flex: 1; background: none; border: none; border-top: 2px solid transparent;
                      padding: 9px 4px 7px; display: flex; flex-direction: column; align-items: center;
@@ -229,6 +230,16 @@
     <!-- WAGERS -->
     <div class="screen" id="screen-wagers">
       <div class="section-head">🎰 Place Wagers</div>
+      <div class="card" style="margin-bottom:4px;">
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">🎟 BETTOR TICKET / RECEIPT</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="ticket-bettor" style="flex:1;background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;">
+            <option value="">— Select Bettor —</option>
+          </select>
+          <button class="btn btn-ghost" onclick="printTicket()" style="white-space:nowrap;">🖨 Print Ticket</button>
+        </div>
+        <div style="font-size:10px;color:#7A9E89;margin-top:6px;text-align:center;">Select a bettor and print their PDF receipt</div>
+      </div>
       <div id="tote-board">
         <div class="tote-eyebrow">◈ TOTE BOARD — LIVE POOL</div>
         <div class="tote-grid">
@@ -245,7 +256,7 @@
             <select id="bet-bettor"><option value="">— Select Bettor —</option></select>
           </div>
           <div class="field"><label>Team</label>
-            <select id="bet-team"><option value="FIELD">🌐 Field — any team in this position</option></select>
+            <select id="bet-team" onchange="updateAmountHint()"><option value="FIELD">🌐 Field — any team in this position</option></select>
           </div>
           <div class="field"><label>Bet Type</label>
             <select id="bet-type" onchange="updateAmountHint()">
@@ -270,15 +281,6 @@
         <input type="text" class="bare" id="wager-search" placeholder="🔍  Filter wagers…" oninput="renderWagers()" style="margin-bottom:10px;" />
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;" id="wagers-count"></div>
         <div class="scroll-list" id="wagers-list" style="max-height:440px;"></div>
-        <div class="divider"></div>
-        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">🎟 BETTOR TICKET / RECEIPT</div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <select id="ticket-bettor" style="flex:1;background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;">
-            <option value="">— Select Bettor —</option>
-          </select>
-          <button class="btn btn-ghost" onclick="printTicket()" style="white-space:nowrap;">🖨 Print Ticket</button>
-        </div>
-        <div style="font-size:10px;color:#7A9E89;margin-top:6px;text-align:center;">Prints a PDF receipt you can share or text to the bettor</div>
       </div>
     </div>
 
@@ -356,7 +358,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v3.4</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v3.7</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -556,6 +558,33 @@ function archiveEvent(id) {
   renderEvents();
 }
 
+function deleteEvent(id) {
+  const ev = root.events.find(e => e.id === id);
+  if (!ev) return;
+  const teamCount  = (ev.teams || []).length;
+  const betCount   = (ev.bets  || []).length;
+  const pool       = (ev.bets  || []).reduce((s,b) => s + b.amount, 0);
+  const msg = 'Permanently delete "' + ev.name + '"?\n\n' +
+    'This will remove:\n' +
+    '  · ' + teamCount + ' team' + (teamCount !== 1 ? 's' : '') + '\n' +
+    '  · ' + betCount  + ' bet'  + (betCount  !== 1 ? 's' : '') + ' (' + fmt(pool) + ' pool)\n' +
+    '  · All placements and results\n\n' +
+    'Bettors are shared and will NOT be deleted.\n\n' +
+    'This cannot be undone.';
+  if (!confirm(msg)) return;
+  // If deleting the active event, clear active and switch to events tab
+  if (root.activeEventId === id) {
+    root.activeEventId = null;
+    state.teams = []; state.bets = []; state.placements = { p1:'', p2:'', p3:'' };
+    state.tournamentName = ''; state.handlePct = 3;
+  }
+  root.events = root.events.filter(e => e.id !== id);
+  save();
+  updateHeader();
+  renderEvents();
+  if (root.activeEventId === null) showTab('events');
+}
+
 function viewArchivedResults(id) {
   const ev = root.events.find(e => e.id === id);
   if (!ev) return;
@@ -601,6 +630,7 @@ function renderEvents() {
           (!isArchived && !isActive ? '<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="setActiveEvent(&quot;' + ev.id + '&quot;)">Open</button>' : '') +
           (!isArchived && isActive  ? '<button class="btn btn-danger" style="font-size:11px;padding:5px 10px;" onclick="archiveEvent(&quot;' + ev.id + '&quot;)">Archive</button>' : '') +
           (hasResults ? '<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="viewArchivedResults(&quot;' + ev.id + '&quot;)">Results</button>' : '') +
+          '<button class="btn btn-danger" style="font-size:11px;padding:5px 10px;" onclick="deleteEvent(&quot;' + ev.id + '&quot;)">🗑 Delete</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -755,15 +785,28 @@ function updateTote() {
 }
 
 function updateAmountHint() {
-  const type   = document.getElementById('bet-type').value;
-  const amount = parseFloat(document.getElementById('bet-amount').value) || 0;
-  const hint   = document.getElementById('amount-hint');
-  if (type === 'win-place' && amount > 0) {
-    hint.style.display = '';
-    hint.textContent = 'Collect ' + fmt(amount * 2) + ' from bettor (' + fmt(amount) + ' WIN + ' + fmt(amount) + ' PLACE)';
-  } else if (type === 'win-place-show' && amount > 0) {
-    hint.style.display = '';
-    hint.textContent = 'Collect ' + fmt(amount * 3) + ' from bettor (' + fmt(amount) + ' each × 3)';
+  const type    = document.getElementById('bet-type').value;
+  const teamId  = document.getElementById('bet-team').value;
+  const amount  = parseFloat(document.getElementById('bet-amount').value) || 0;
+  const hint    = document.getElementById('amount-hint');
+  const isField = teamId === 'FIELD';
+  const nTeams  = (state.teams || []).length;
+
+  if (amount <= 0) { hint.style.display = 'none'; return; }
+
+  const legs = type === 'win-place' ? 2 : type === 'win-place-show' ? 3 : 1;
+  const fieldMult = isField && nTeams > 0 ? nTeams : 1;
+  const total = amount * legs * fieldMult;
+
+  hint.style.display = '';
+  if (isField && nTeams > 0) {
+    if (legs > 1) {
+      hint.textContent = 'Collect ' + fmt(total) + ' from bettor (' + fmt(amount) + ' x ' + legs + ' bet types x ' + nTeams + ' teams)';
+    } else {
+      hint.textContent = 'Collect ' + fmt(total) + ' from bettor (' + fmt(amount) + ' x ' + nTeams + ' teams)';
+    }
+  } else if (legs > 1) {
+    hint.textContent = 'Collect ' + fmt(total) + ' from bettor (' + fmt(amount) + ' x ' + legs + ' bets)';
   } else {
     hint.style.display = 'none';
   }
@@ -776,14 +819,27 @@ function addBet() {
   const amount   = parseFloat(document.getElementById('bet-amount').value);
   if (!bettorId || !amount || amount <= 0) return;
 
-  // Expand combo bets into individual win/place/show bets
-  const betTypes = type === 'win-place'       ? ['win','place']       :
-                   type === 'win-place-show'   ? ['win','place','show'] :
+  const betTypes = type === 'win-place'     ? ['win','place']        :
+                   type === 'win-place-show' ? ['win','place','show'] :
                    [type];
+
+  const isField  = teamId === 'FIELD';
+  const nTeams   = (state.teams || []).length;
+
+  // For field bets: multiply amount by number of teams so pool reflects what was collected.
+  // e.g. $2 field bet with 30 teams = $60 into the pool.
+  const storedAmount = isField && nTeams > 0 ? amount * nTeams : amount;
 
   const comboGroupId = betTypes.length > 1 ? uid() : null;
   betTypes.forEach(t => {
-    state.bets.push({ id: uid(), bettorId, teamId, type: t, amount, combo: betTypes.length > 1 ? type : null, comboGroupId });
+    state.bets.push({
+      id: uid(), bettorId, teamId, type: t,
+      amount: storedAmount,
+      unitAmount: amount,
+      fieldTeamCount: isField && nTeams > 0 ? nTeams : null,
+      combo: betTypes.length > 1 ? type : null,
+      comboGroupId
+    });
   });
 
   document.getElementById('bet-amount').value = '';
@@ -792,9 +848,14 @@ function addBet() {
 }
 
 function removeBet(id) {
-  // If this bet is part of a combo group, remove all bets with the same comboGroupId
   const bet = state.bets.find(b => b.id === id);
-  if (bet && bet.comboGroupId) {
+  if (!bet) return;
+  const bettor = bettorById(bet.bettorId);
+  const tName  = teamName(bet.teamId);
+  const msg = 'Delete this bet?\n\nBettor: ' + (bettor ? bettor.name : '?') + '\nTeam: ' + tName + '\nType: ' + (bet.combo || bet.type).toUpperCase() + '\nAmount: ' + fmt(bet.amount);
+    'Amount: ' + fmt(bet.amount);
+  if (!confirm(msg)) return;
+  if (bet.comboGroupId) {
     state.bets = state.bets.filter(b => b.comboGroupId !== bet.comboGroupId);
   } else {
     state.bets = state.bets.filter(b => b.id !== id);
@@ -840,19 +901,25 @@ function renderWagers() {
 
   list.innerHTML = filtered.map(g => {
     const typeDisplay = g.isCombo
-      ? `<span style="color:#D4A843;font-weight:700;font-size:11px;">${COMBO_LABEL[g.comboType]||g.comboType}</span>`
-      : `<span style="color:${TYPE_COLOR[g.rep.type]};font-weight:700;text-transform:uppercase;font-size:11px;">${TYPE_LABEL[g.rep.type]}</span>`;
+      ? '<span style="color:#D4A843;font-weight:700;font-size:11px;">' + (COMBO_LABEL[g.comboType]||g.comboType) + '</span>'
+      : '<span style="color:' + TYPE_COLOR[g.rep.type] + ';font-weight:700;text-transform:uppercase;font-size:11px;">' + TYPE_LABEL[g.rep.type] + '</span>';
+    const isField = g.rep.teamId === 'FIELD';
+    const fc = g.rep.fieldTeamCount;
+    const ua = g.rep.unitAmount;
+    const amountDisplay = isField && fc && ua
+      ? fmt(g.total) + '<span style="font-size:10px;color:#7A9E89;display:block;">' + fmt(ua) + ' x ' + fc + ' teams</span>'
+      : fmt(g.total);
     const removeId = g.rep.id;
-    return `<div class="list-row">
-      <div>
-        <div class="row-name">${esc(bettorById(g.rep.bettorId)?.name || '?')}</div>
-        <div class="row-sub">${esc(teamName(g.rep.teamId))} · ${typeDisplay}</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span class="row-amount">${fmt(g.total)}</span>
-        <button class="btn btn-danger" onclick="removeBet('${removeId}')">✕</button>
-      </div>
-    </div>`;
+    return '<div class="list-row">' +
+      '<div>' +
+        '<div class="row-name">' + esc(bettorById(g.rep.bettorId)?.name || '?') + '</div>' +
+        '<div class="row-sub">' + esc(teamName(g.rep.teamId)) + ' · ' + typeDisplay + '</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<span class="row-amount">' + amountDisplay + '</span>' +
+        '<button class="btn btn-danger" onclick="removeBet(\'' + removeId + '\')">✕</button>' +
+      '</div>' +
+    '</div>';
   }).join('');
 }
 
