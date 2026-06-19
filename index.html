@@ -377,7 +377,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v3.9</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v4.0</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -1221,7 +1221,13 @@ function renderResults() {
     bettorMap[b.bettorId].bets.push(b);
   });
   const sortedBettors = Object.entries(bettorMap)
-    .sort(function(a,b) { return (bettorById(a[0])?.name||'').localeCompare(bettorById(b[0])?.name||''); });
+    .sort(function(a, b) {
+      const payA = a[1].payout, payB = b[1].payout;
+      // Winners (payout > 0) sort by payout descending
+      if (payA > 0 || payB > 0) return payB - payA;
+      // Non-winners sort alphabetically
+      return (bettorById(a[0])?.name||'').localeCompare(bettorById(b[0])?.name||'');
+    });
 
   document.getElementById('recon-list').innerHTML = sortedBettors.map(function(entry) {
     const id = entry[0], s = entry[1];
