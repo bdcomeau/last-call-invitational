@@ -131,6 +131,13 @@
     .confirmed-banner { display: flex; align-items: center; gap: 10px; }
     .confirmed-banner .emoji { font-size: 28px; }
 
+    /* Review overlay */
+    #review-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+      background:rgba(0,0,0,0.95); z-index:10000; align-items:center; justify-content:center;
+      padding:16px; overflow-y:auto; }
+    #review-box { background:#1E2E23; border:1px solid #2B4033; border-radius:14px;
+      padding:18px 16px; width:100%; max-width:480px; }
+
     /* Ticket confirm overlay */
     #ticket-confirm-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0;
       background:rgba(0,0,0,0.95); z-index:10000; align-items:center; justify-content:center;
@@ -300,8 +307,9 @@
               <option value="20">20 copies</option>
             </select>
           </div>
-          <button class="btn btn-primary" onclick="printBettingSheet()" style="white-space:nowrap;margin-top:18px;">🖨 Print Sheets</button>
+          <button class="btn btn-primary" onclick="printBettingSheet()" style="white-space:nowrap;margin-top:18px;">🖨 Prepare Sheets</button>
         </div>
+        <button id="sheet-print-btn" class="btn btn-primary" style="display:none;width:100%;margin-top:10px;font-size:15px;padding:14px;">🖨 Print Betting Sheets</button>
       </div>
 
       <!-- Bettor selector -->
@@ -483,7 +491,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.7</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.8</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -495,6 +503,13 @@
     <button onclick="showTab('results')"><span class="tab-icon">📋</span><span class="tab-label">RESULTS</span></button>
   </div>
 </div>
+
+  <!-- Bet review overlay -->
+  <div id="review-overlay">
+    <div id="review-box">
+      <div id="review-content"></div>
+    </div>
+  </div>
 
   <!-- Ticket number confirmation overlay -->
   <div id="ticket-confirm-overlay">
@@ -1351,8 +1366,8 @@ function printTicketOverlay() {
     document.body.appendChild(wrapper);
   }
   wrapper.innerHTML = document.getElementById('ticket-overlay-body').innerHTML;
-  // Delay to let DOM update before printing — fixes blank page bug on iOS
-  setTimeout(function() { window.print(); }, 400);
+  // Print is triggered by the button tap directly — no setTimeout needed
+  window.print();
 }
 
 // ─── ENTRY SHEET ─────────────────────────────────────────────────────────────
@@ -1500,22 +1515,85 @@ function submitEntrySheet() {
   const grand = betsToAdd.reduce((s,b) => s + b.amount, 0);
   const betLines = [...new Set(betsToAdd.map(b => teamName(b.teamId)))].join(', ');
 
-  // Step 1: Review confirmation
-  if (!confirm(
-    'Review bets for ' + (bettor ? bettor.name : '?') + ':\n\n' +
-    'Teams: ' + betLines + '\n' +
-    'Total bets: ' + betsToAdd.length + '\n' +
-    'Grand Total: ' + fmt(grand) + '\n\n' +
-    'Proceed to cash confirmation?'
-  )) return;
+  // Show the review modal instead of plain confirm()
+  showEntryReview(betsToAdd, bettor, grand, bettorId);
+}
 
-  // Step 2: Cash confirmation — must confirm before ticket is generated
+let _pendingEntry = null;
+
+function showEntryReview(betsToAdd, bettor, grand, bettorId) {
+  _pendingEntry = { betsToAdd, bettor, grand, bettorId };
+  const overlay = document.getElementById('review-overlay');
+  const content = document.getElementById('review-content');
+  if (!overlay || !content) return;
+
+  // Build per-team breakdown
+  const teamMap = {};
+  betsToAdd.forEach(b => {
+    const tn = teamName(b.teamId);
+    if (!teamMap[tn]) teamMap[tn] = {};
+    teamMap[tn][b.type] = b.amount;
+  });
+
+  const typeColors = { win: '#3DB86E', place: '#5AAEDD', show: '#B07FDE' };
+  const typeLabels = { win: 'WIN', place: 'PLACE', show: 'SHOW' };
+
+  const teamRows = Object.entries(teamMap).map(function(entry) {
+    const tn = entry[0], types = entry[1];
+    const teamTotal = Object.values(types).reduce((s,v)=>s+v,0);
+    const betCols = ['win','place','show'].map(t =>
+      types[t] ? '<span style="color:' + typeColors[t] + ';font-weight:700;margin-right:8px;">' + typeLabels[t] + ' ' + fmt(types[t]) + '</span>' : ''
+    ).join('');
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid #2B4033;">' +
+      '<div>' +
+        '<div style="font-size:13px;font-weight:600;color:#EDE8DC;">' + esc(tn) + '</div>' +
+        '<div style="font-size:11px;margin-top:2px;">' + betCols + '</div>' +
+      '</div>' +
+      '<div style="font-size:13px;font-weight:700;color:#EDE8DC;white-space:nowrap;margin-left:8px;">' + fmt(teamTotal) + '</div>' +
+    '</div>';
+  }).join('');
+
+  content.innerHTML =
+    '<div style="font-size:11px;color:#7A9E89;letter-spacing:1px;margin-bottom:10px;">REVIEW BETS BEFORE CONFIRMING CASH</div>' +
+    '<div style="background:#162219;border:1px solid #D4A84366;border-radius:8px;padding:8px 10px;margin-bottom:10px;">' +
+      '<div style="font-size:11px;color:#8F6E2A;font-weight:700;letter-spacing:1px;margin-bottom:2px;">BETTOR</div>' +
+      '<div style="font-size:16px;font-weight:700;color:#EDE8DC;">' + esc(bettor ? bettor.name : '?') + '</div>' +
+    '</div>' +
+    '<div style="font-size:10px;color:#7A9E89;letter-spacing:1px;margin-bottom:4px;">BETS ENTERED</div>' +
+    '<div style="background:#162219;border-radius:8px;overflow:hidden;margin-bottom:12px;">' +
+      teamRows +
+    '</div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#1E2E23;border-radius:8px;margin-bottom:16px;">' +
+      '<div>' +
+        '<div style="font-size:11px;color:#7A9E89;">Total bets: ' + betsToAdd.length + '</div>' +
+        '<div style="font-size:18px;font-weight:900;font-family:Barlow Condensed,sans-serif;color:#D4A843;">Grand Total: ' + fmt(grand) + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="font-size:12px;color:#E05252;font-weight:700;text-align:center;margin-bottom:14px;">Verify this matches the paper sheet before confirming cash ↓</div>' +
+    '<div style="display:flex;gap:10px;">' +
+      '<button class="btn btn-danger" style="flex:1;" onclick="closeReview()">✕ Cancel — Fix Entry</button>' +
+      '<button class="btn btn-primary" style="flex:1;" onclick="confirmCash()">💵 Cash Received — Confirm</button>' +
+    '</div>';
+
+  overlay.style.display = 'flex';
+}
+
+function closeReview() {
+  const o = document.getElementById('review-overlay');
+  if (o) o.style.display = 'none';
+}
+
+function confirmCash() {
+  if (!_pendingEntry) return;
+  const { betsToAdd, bettor, grand, bettorId } = _pendingEntry;
+  _pendingEntry = null;
+  closeReview();
   if (!confirm(
-    '💵 CASH CONFIRMATION\n\n' +
-    'Do you confirm that you have collected cash from ' + (bettor ? bettor.name : '?') + '\n' +
-    'that matches the Grand Total of ' + fmt(grand) + '?\n\n' +
-    'Answering YES will lock this ticket and generate a reference number.\n' +
-    'Locked tickets can only be voided with a triple override.'
+    '💵 FINAL CASH CONFIRMATION\n\n' +
+    'Bettor: ' + (bettor ? bettor.name : '?') + '\n' +
+    'Amount: ' + fmt(grand) + '\n\n' +
+    'Do you confirm cash in hand matches this amount?\n' +
+    'This will LOCK the ticket — deletion requires triple override.'
   )) return;
 
   // Cash confirmed — now generate the ticket ref and lock the bets
@@ -1736,11 +1814,23 @@ function printBettingSheet() {
     document.body.appendChild(wrapper);
   }
   wrapper.innerHTML = '';
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;';
-  iframe.srcdoc = html;
-  wrapper.appendChild(iframe);
-  iframe.onload = function() { setTimeout(function(){ iframe.contentWindow.print(); }, 400); };
+  // Instead of auto-printing (blocked by Safari), store HTML and show a print button
+  const printBtn = document.getElementById('sheet-print-btn');
+  if (printBtn) {
+    printBtn.style.display = '';
+    printBtn._sheetHtml = html;
+    printBtn.onclick = function() {
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:99999;';
+      iframe.srcdoc = this._sheetHtml;
+      document.body.appendChild(iframe);
+      iframe.onload = function() {
+        iframe.contentWindow.print();
+        setTimeout(function() { document.body.removeChild(iframe); }, 1000);
+      };
+    };
+    alert('✓ Sheet ready — tap "Print Sheet" to open printer.');
+  }
 }
 
 // ─── PLACEMENTS ───────────────────────────────────────────────────────────────
