@@ -131,6 +131,13 @@
     .confirmed-banner { display: flex; align-items: center; gap: 10px; }
     .confirmed-banner .emoji { font-size: 28px; }
 
+    /* Ticket confirm overlay */
+    #ticket-confirm-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+      background:rgba(0,0,0,0.95); z-index:10000; align-items:center; justify-content:center;
+      padding:20px; }
+    #ticket-confirm-box { background:#1E2E23; border:2px solid #D4A843; border-radius:16px;
+      padding:24px 20px; width:100%; max-width:440px; }
+
     /* Ticket overlay */
     #ticket-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0;
       background:rgba(0,0,0,0.92); z-index:9999; flex-direction:column;
@@ -476,7 +483,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.5</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.7</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -488,6 +495,13 @@
     <button onclick="showTab('results')"><span class="tab-icon">📋</span><span class="tab-label">RESULTS</span></button>
   </div>
 </div>
+
+  <!-- Ticket number confirmation overlay -->
+  <div id="ticket-confirm-overlay">
+    <div id="ticket-confirm-box">
+      <div id="ticket-confirm-content"></div>
+    </div>
+  </div>
 
   <!-- Ticket overlay -->
   <div id="ticket-overlay">
@@ -1070,8 +1084,57 @@ function removeBet(id) {
   if (!bet) return;
   const bettor = bettorById(bet.bettorId);
   const tName  = teamName(bet.teamId);
-  const msg = 'Delete this bet?\n\nBettor: ' + (bettor ? bettor.name : '?') + '\nTeam: ' + tName + '\nType: ' + (bet.combo || bet.type).toUpperCase() + '\nAmount: ' + fmt(bet.amount);
-    'Amount: ' + fmt(bet.amount);
+
+  // ── LOCKED TICKET — triple override required ──────────────────────────────
+  if (bet.ticketRef) {
+    const ticketBets = state.bets.filter(b => b.ticketRef === bet.ticketRef);
+    const ticketTotal = ticketBets.reduce((s,b) => s + b.amount, 0);
+    const bettorName  = bettor ? bettor.name : '?';
+
+    // Confirmation 1
+    if (!confirm(
+      '🔒 LOCKED TICKET\n\n' +
+      'This bet belongs to ticket ' + bet.ticketRef + ' for ' + bettorName + '.\n\n' +
+      'Deleting ANY bet on this ticket will VOID THE ENTIRE TICKET\n' +
+      'and remove ALL ' + ticketBets.length + ' bets (' + fmt(ticketTotal) + ' total).\n\n' +
+      'The bettor will need to submit a new sheet.\n\n' +
+      'Do you want to proceed?'
+    )) return;
+
+    // Confirmation 2
+    if (!confirm(
+      '⚠️ SECOND CONFIRMATION\n\n' +
+      'You are about to void ticket ' + bet.ticketRef + '.\n\n' +
+      'This will delete ' + ticketBets.length + ' bets totalling ' + fmt(ticketTotal) + '.\n\n' +
+      'This action cannot be undone.\n\n' +
+      'Are you absolutely sure?'
+    )) return;
+
+    // Confirmation 3 — final override
+    if (!confirm(
+      '🚨 FINAL OVERRIDE — CONFIRMATION 3 OF 3\n\n' +
+      'Ticket ' + bet.ticketRef + ' for ' + bettorName + '\n' +
+      'will be permanently voided.\n\n' +
+      'Type OK to confirm you accept full responsibility\n' +
+      'and that the cash for this ticket has been returned.'
+    )) return;
+
+    // Void the entire ticket
+    state.bets = state.bets.filter(b => b.ticketRef !== bet.ticketRef);
+    syncRootFromState();
+    save(); renderWagers(); updateTote(); updateHeader();
+    // Refresh entry tickets if visible
+    const entryBettor = document.getElementById('entry-bettor');
+    if (entryBettor && entryBettor.value) renderEntryTickets(entryBettor.value);
+    alert('Ticket ' + bet.ticketRef + ' has been voided. All ' + ticketBets.length + ' bets removed.');
+    return;
+  }
+
+  // ── UNLOCKED BET — standard single confirmation ───────────────────────────
+  const msg = 'Delete this bet?\n\nBettor: ' + (bettor ? bettor.name : '?') +
+    '\nTeam: ' + tName +
+    '\nType: ' + (bet.combo || bet.type).toUpperCase() +
+    '\nAmount: ' + fmt(bet.amount);
   if (!confirm(msg)) return;
   if (bet.comboGroupId) {
     state.bets = state.bets.filter(b => b.comboGroupId !== bet.comboGroupId);
@@ -1131,7 +1194,9 @@ function renderWagers() {
     return '<div class="list-row">' +
       '<div>' +
         '<div class="row-name">' + esc(bettorById(g.rep.bettorId)?.name || '?') + '</div>' +
-        '<div class="row-sub">' + esc(teamName(g.rep.teamId)) + ' · ' + typeDisplay + '</div>' +
+        '<div class="row-sub">' + esc(teamName(g.rep.teamId)) + ' · ' + typeDisplay +
+          (g.rep.ticketRef ? ' · <span style="color:#D4A843;font-size:10px;">🔒 ' + g.rep.ticketRef + '</span>' : '') +
+        '</div>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:10px;">' +
         '<span class="row-amount">' + amountDisplay + '</span>' +
@@ -1294,12 +1359,11 @@ function printTicketOverlay() {
 // Generates a unique ticket reference number for the active event
 function genTicketRef() {
   const ev = activeEvent();
-  if (!ev) return 'LCI-001';
+  if (!ev) return 'LCI-0001';
   if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-  const year = new Date(ev.createdAt).getFullYear();
-  const num  = String(ev.nextTicketNum).padStart(3, '0');
+  const num = String(ev.nextTicketNum).padStart(4, '0');
   ev.nextTicketNum++;
-  return 'LCI-' + year + '-' + num;
+  return 'LCI-' + num;
 }
 
 function loadEntryTab() {
@@ -1337,8 +1401,7 @@ function loadEntrySheet() {
   // Show pending ticket ref (will be assigned on submit)
   const ev = activeEvent();
   const nextNum = ev ? (ev.nextTicketNum || 1) : 1;
-  const year    = ev ? new Date(ev.createdAt).getFullYear() : new Date().getFullYear();
-  if (refEl) refEl.textContent = 'Next ticket: LCI-' + year + '-' + String(nextNum).padStart(3,'0');
+  if (refEl) refEl.textContent = 'Next ticket #: LCI-' + String(nextNum).padStart(4,'0');
 
   // Build entry rows
   const rows = document.getElementById('entry-rows');
@@ -1414,6 +1477,7 @@ function submitEntrySheet() {
   const sel      = document.getElementById('entry-bettor');
   const bettorId = sel ? sel.value : '';
   if (!bettorId) { alert('Please select a bettor.'); return; }
+  const bettor = bettorById(bettorId);
 
   const selects = document.querySelectorAll('#entry-rows select');
   const betsToAdd = [];
@@ -1434,15 +1498,33 @@ function submitEntrySheet() {
   if (!betsToAdd.length) { alert('No amounts entered — fill in at least one bet.'); return; }
 
   const grand = betsToAdd.reduce((s,b) => s + b.amount, 0);
-  const teamNames = [...new Set(betsToAdd.map(b => teamName(b.teamId)))].join(', ');
-  if (!confirm('Submit ' + betsToAdd.length + ' bet(s) for ' + fmt(grand) + ' total?\n\nTeams: ' + teamNames)) return;
+  const betLines = [...new Set(betsToAdd.map(b => teamName(b.teamId)))].join(', ');
 
+  // Step 1: Review confirmation
+  if (!confirm(
+    'Review bets for ' + (bettor ? bettor.name : '?') + ':\n\n' +
+    'Teams: ' + betLines + '\n' +
+    'Total bets: ' + betsToAdd.length + '\n' +
+    'Grand Total: ' + fmt(grand) + '\n\n' +
+    'Proceed to cash confirmation?'
+  )) return;
+
+  // Step 2: Cash confirmation — must confirm before ticket is generated
+  if (!confirm(
+    '💵 CASH CONFIRMATION\n\n' +
+    'Do you confirm that you have collected cash from ' + (bettor ? bettor.name : '?') + '\n' +
+    'that matches the Grand Total of ' + fmt(grand) + '?\n\n' +
+    'Answering YES will lock this ticket and generate a reference number.\n' +
+    'Locked tickets can only be voided with a triple override.'
+  )) return;
+
+  // Cash confirmed — now generate the ticket ref and lock the bets
   const ticketRef = genTicketRef();
   betsToAdd.forEach(b => {
     state.bets.push({
       id: uid(), bettorId, teamId: b.teamId, type: b.type,
       amount: b.amount, unitAmount: b.unitAmount, fieldTeamCount: b.fieldTeamCount,
-      ticketRef, comboGroupId: null, combo: null
+      ticketRef, locked: true, comboGroupId: null, combo: null
     });
   });
 
@@ -1457,13 +1539,47 @@ function submitEntrySheet() {
   renderEntryTickets(bettorId);
 
   // Update ticket ref preview
-  const ev = activeEvent();
-  const nextNum = ev ? (ev.nextTicketNum || 1) : 1;
-  const year    = ev ? new Date(ev.createdAt).getFullYear() : new Date().getFullYear();
-  const refEl   = document.getElementById('entry-ticket-ref');
-  if (refEl) refEl.textContent = 'Next ticket: LCI-' + year + '-' + String(nextNum).padStart(3,'0');
+  const ev2 = activeEvent();
+  const nextNum2 = ev2 ? (ev2.nextTicketNum || 1) : 1;
+  const refEl = document.getElementById('entry-ticket-ref');
+  if (refEl) refEl.textContent = 'Next ticket #: LCI-' + String(nextNum2).padStart(4,'0');
 
-  alert('✓ Ticket ' + ticketRef + ' submitted — ' + betsToAdd.length + ' bet(s), ' + fmt(grand) + ' total.');
+  // Show ticket number prominently so operator can write it on the paper sheet
+  showTicketConfirmation(ticketRef, bettor, grand, bettorId);
+}
+
+function showTicketConfirmation(ticketRef, bettor, grand, bettorId) {
+  const overlay = document.getElementById('ticket-confirm-overlay');
+  const content = document.getElementById('ticket-confirm-content');
+  if (!overlay || !content) return;
+  content.innerHTML =
+    '<div style="text-align:center;padding:10px 0 20px;">' +
+      '<div style="font-size:11px;color:#7A9E89;letter-spacing:2px;margin-bottom:8px;">TICKET GENERATED — WRITE THIS ON THE PAPER SHEET</div>' +
+      '<div style="font-family:Barlow Condensed,sans-serif;font-size:72px;font-weight:900;color:#D4A843;line-height:1;letter-spacing:2px;margin-bottom:8px;">' + ticketRef + '</div>' +
+      '<div style="font-size:15px;color:#EDE8DC;font-weight:600;margin-bottom:4px;">' + esc(bettor ? bettor.name : '') + '</div>' +
+      '<div style="font-size:13px;color:#3DB86E;font-weight:700;margin-bottom:20px;">Cash collected: ' + fmt(grand) + ' ✓</div>' +
+      '<div style="background:#E0525218;border:1px solid #E0525255;border-radius:8px;padding:10px 14px;margin-bottom:20px;">' +
+        '<div style="font-size:13px;color:#E05252;font-weight:700;">✍️ Write ' + ticketRef + ' on the paper betting sheet before handing back</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' +
+        '<button class="btn btn-primary" style="font-size:14px;padding:12px 20px;" onclick="printTicketFromConfirm(&quot;' + (bettor?bettor.id:'') + '&quot;)">🖨 Print Receipt for Bettor</button>' +
+        '<button class="btn btn-ghost" style="font-size:14px;padding:12px 20px;" onclick="closeTicketConfirm()">✓ Done — No Receipt</button>' +
+      '</div>' +
+    '</div>';
+  overlay.style.display = 'flex';
+}
+
+function closeTicketConfirm() {
+  const o = document.getElementById('ticket-confirm-overlay');
+  if (o) o.style.display = 'none';
+}
+
+function printTicketFromConfirm(bettorId) {
+  closeTicketConfirm();
+  const sel = document.getElementById('ticket-bettor');
+  if (sel) { sel.value = bettorId; }
+  printTicket();
+
 }
 
 function renderEntryTickets(bettorId) {
@@ -1471,7 +1587,6 @@ function renderEntryTickets(bettorId) {
   const list = document.getElementById('entry-tickets-list');
   if (!card || !list) return;
 
-  // Group this bettor's bets by ticketRef
   const bettorBets = (state.bets||[]).filter(b => b.bettorId === bettorId && b.ticketRef);
   if (!bettorBets.length) { card.style.display = 'none'; return; }
 
@@ -1490,10 +1605,15 @@ function renderEntryTickets(bettorId) {
         '<span>' + fmt(b.amount) + '</span>' +
       '</div>'
     ).join('');
-    return '<div style="background:#162219;border-radius:8px;padding:10px 12px;margin-bottom:8px;">' +
+    // Use the first bet's id for the void trigger
+    const firstBetId = bets[0].id;
+    return '<div style="background:#162219;border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid #2B4033;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-        '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:#D4A843;">' + ref + '</span>' +
-        '<span style="font-size:12px;font-weight:700;color:#EDE8DC;">' + fmt(total) + '</span>' +
+        '<span style="font-family:Barlow Condensed,sans-serif;font-size:14px;font-weight:700;color:#D4A843;">🔒 ' + ref + '</span>' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-size:12px;font-weight:700;color:#EDE8DC;">' + fmt(total) + '</span>' +
+          '<button class="btn btn-danger" style="font-size:10px;padding:3px 8px;" onclick="removeBet(\'' + firstBetId + '\')">Void</button>' +
+        '</div>' +
       '</div>' +
       lines +
     '</div>';
@@ -1536,6 +1656,8 @@ function printBettingSheet() {
         '<div class="bettor-block">' +
           '<div class="bettor-label">Bettor Name</div>' +
           '<div class="bettor-box"></div>' +
+          '<div class="bettor-label" style="margin-top:6px;">Ticket #</div>' +
+          '<div class="bettor-box" style="min-height:18px;"></div>' +
         '</div>' +
       '</div>' +
       '<table>' +
