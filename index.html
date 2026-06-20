@@ -499,7 +499,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.9</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v6.0</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -931,30 +931,39 @@ function prepareCashLabels() {
   // One label per winning bettor
   // 62mm × 100mm ≈ 234px × 378px at 96dpi, but we use mm units for accuracy
   const labelCSS =
-    '@page { size: 62mm 100mm; margin: 0; }' +
-    'body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background: #fff; color: #000; }' +
-    '.label { width: 62mm; height: 100mm; padding: 3mm 3.5mm; box-sizing: border-box; page-break-after: always; overflow: hidden; display: flex; flex-direction: column; }' +
-    '.label:last-child { page-break-after: avoid; }' +
-    '.ev-name { font-size: 8pt; font-weight: 700; letter-spacing: 0.3pt; border-bottom: 0.5pt solid #000; padding-bottom: 1.5mm; margin-bottom: 1.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
-    '.ticket-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1mm; }' +
-    '.ticket-num { font-size: 11pt; font-weight: 900; color: #8B6914; letter-spacing: 0.5pt; }' +
-    '.bettor-name { font-size: 9pt; font-weight: 700; }' +
-    '.results-row { font-size: 6.5pt; color: #333; margin-bottom: 1.5mm; padding-bottom: 1.5mm; border-bottom: 0.5pt solid #ccc; }' +
-    '.bets-head { font-size: 6pt; font-weight: 700; letter-spacing: 0.5pt; color: #555; text-transform: uppercase; margin-bottom: 1mm; }' +
-    '.bet-row { display: flex; justify-content: space-between; align-items: center; font-size: 6.5pt; margin-bottom: 0.8mm; padding: 0.8mm 1.5mm; border-radius: 1mm; }' +
+    // Use letter page — let the QL driver handle label feeding
+    // Each label is drawn as an exact 62×100mm box on the page
+    '@page { size: letter portrait; margin: 0.25in; }' +
+    'body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background: #fff; color: #000; font-size: 7pt; }' +
+    '.label { width: 62mm; height: 100mm; padding: 3mm 3.5mm; box-sizing: border-box;' +
+      'border: 1pt solid #ccc; border-radius: 2mm; overflow: hidden;' +
+      'display: inline-flex; flex-direction: column; margin: 3mm;' +
+      'page-break-inside: avoid; vertical-align: top; }' +
+    '.ev-name { font-size: 7pt; font-weight: 700; letter-spacing: 0.3pt;' +
+      'border-bottom: 0.5pt solid #000; padding-bottom: 1.5mm; margin-bottom: 1.5mm;' +
+      'white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
+    '.ticket-num { font-size: 12pt; font-weight: 900; color: #8B6914; letter-spacing: 0.5pt; margin-bottom: 0.5mm; }' +
+    '.bettor-name { font-size: 8.5pt; font-weight: 700; margin-bottom: 1mm; }' +
+    '.results-row { font-size: 6pt; color: #333; margin-bottom: 1.5mm; padding-bottom: 1.5mm; border-bottom: 0.5pt solid #ccc; line-height: 1.4; }' +
+    '.bets-head { font-size: 5.5pt; font-weight: 700; letter-spacing: 0.5pt; color: #555; text-transform: uppercase; margin-bottom: 1mm; }' +
+    '.bet-row { display: flex; justify-content: space-between; align-items: center;' +
+      'font-size: 6.5pt; margin-bottom: 0.8mm; padding: 0.8mm 1.5mm; border-radius: 1mm; }' +
     '.bet-win   { background: #e8f5eb; }' +
     '.bet-place { background: #e8f0f8; }' +
     '.bet-show  { background: #f3eaf8; }' +
-    '.bet-lose  { background: #f5f5f5; color: #999; }' +
+    '.bet-lose  { background: #f5f5f5; color: #aaa; }' +
     '.bet-type  { font-weight: 700; width: 11mm; flex-shrink: 0; }' +
     '.bet-team  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 1mm; }' +
     '.bet-amt   { font-weight: 600; white-space: nowrap; }' +
     '.bet-payout { font-weight: 700; color: #1a6e2e; white-space: nowrap; margin-left: 1mm; }' +
     '.payout-box { margin-top: auto; border: 0.8pt solid #8B6914; border-radius: 1.5mm; padding: 1.5mm 2mm; }' +
-    '.payout-row { display: flex; justify-content: space-between; font-size: 7pt; }' +
+    '.payout-row { display: flex; justify-content: space-between; font-size: 6.5pt; margin-bottom: 0.5mm; }' +
     '.payout-label { color: #555; }' +
-    '.payout-total { font-size: 10pt; font-weight: 900; color: #1a6e2e; }' +
-    '@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }';
+    '.payout-total { font-size: 9.5pt; font-weight: 900; color: #1a6e2e; }' +
+    '@media print {' +
+      'body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }' +
+      '.label { border: 1pt solid #999; }' +
+    '}';
 
   const labelsHTML = winners.map(([bettorId, s]) => {
     const bettor = bettorById(bettorId);
@@ -1020,7 +1029,7 @@ function prepareCashLabels() {
         }, 2000);
       };
     };
-    alert('✓ ' + winners.length + ' winner label' + (winners.length>1?'s':'') + ' ready.\n\nMake sure your Brother QL-720NW is connected and set to 62×100mm labels, then tap "Print Labels".');
+    alert('✓ ' + winners.length + ' winner label' + (winners.length>1?'s':'') + ' ready.\n\nLabels are formatted as 62×100mm boxes on a standard page.\n\nIn the print dialog:\n• Select your Brother QL-720NW\n• Set paper size to letter or let the driver auto-detect\n• The driver will feed one label per box\n\nTap "Print Labels" to open the print dialog.');
   }
 }
 
