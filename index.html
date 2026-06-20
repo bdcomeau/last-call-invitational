@@ -540,7 +540,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.3</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.4</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -615,25 +615,30 @@ function syncStateFromRoot() {
     state.tournamentName = ev.name || '';
     state.handlePct      = ev.handlePct || 3;
     state.payoutMode     = ev.payoutMode || 'simplified';
-    state.teams          = ev.teams || [];
-    state.bets           = ev.bets || [];
-    state.bettors        = ev.bettors || [];
-    state.placements     = ev.placements || { p1:'', p2:'', p3:'' };
+    // Deep copy arrays so state never shares references with the event object
+    state.teams          = JSON.parse(JSON.stringify(ev.teams    || []));
+    state.bets           = JSON.parse(JSON.stringify(ev.bets     || []));
+    state.bettors        = JSON.parse(JSON.stringify(ev.bettors  || []));
+    state.placements     = JSON.parse(JSON.stringify(ev.placements || { p1:'', p2:'', p3:'' }));
+    state.nextTicketNum  = ev.nextTicketNum || 1;
   } else {
     state.teams = []; state.bets = []; state.bettors = []; state.placements = { p1:'', p2:'', p3:'' };
+    state.nextTicketNum = 1;
   }
 }
 
 function syncRootFromState() {
   const ev = activeEvent();
   if (ev) {
-    ev.name       = state.tournamentName;
-    ev.handlePct  = state.handlePct;
-    ev.payoutMode = state.payoutMode || 'simplified';
-    ev.teams      = state.teams;
-    ev.bets       = state.bets;
-    ev.bettors    = state.bettors;
-    ev.placements = state.placements;
+    ev.name          = state.tournamentName;
+    ev.handlePct     = state.handlePct;
+    ev.payoutMode    = state.payoutMode || 'simplified';
+    ev.nextTicketNum = state.nextTicketNum || 1;
+    // Deep copy so event object is independent of state references
+    ev.teams      = JSON.parse(JSON.stringify(state.teams     || []));
+    ev.bets       = JSON.parse(JSON.stringify(state.bets      || []));
+    ev.bettors    = JSON.parse(JSON.stringify(state.bettors   || []));
+    ev.placements = JSON.parse(JSON.stringify(state.placements || { p1:'', p2:'', p3:'' }));
   }
 }
 
@@ -1706,6 +1711,7 @@ function genTicketRef() {
   if (!ev.nextTicketNum) ev.nextTicketNum = 1;
   const num = String(ev.nextTicketNum).padStart(4, '0');
   ev.nextTicketNum++;
+  state.nextTicketNum = ev.nextTicketNum; // keep state in sync
   return 'LCI-' + num;
 }
 
