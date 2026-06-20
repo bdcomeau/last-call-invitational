@@ -540,7 +540,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v6.7</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v6.8</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -2518,15 +2518,18 @@ async function importTeams(input) {
 async function importBettors(input) {
   const file = input.files[0];
   if (!file) return;
+  if (!root.activeEventId) { showImportMsg('import-bettors-msg', -1, 0); input.value=''; return; }
   const rows = await parseFileToRows(file);
   const names = rows.map(r => String(r[0]||'').trim()).filter(n => n.length > 0);
   if (names.length === 0) { showImportMsg('import-bettors-msg', 0, 0); input.value=''; return; }
+  if (!state.bettors) state.bettors = [];
   let added = 0, skipped = 0;
-    names.forEach(name => {
-    if (root.bettors.find(b => b.name.toLowerCase() === name.toLowerCase())) { skipped++; return; }
-    root.bettors.push({ id: uid(), name, email: '', phone: '' });
+  names.forEach(name => {
+    if (state.bettors.find(b => b.name.toLowerCase() === name.toLowerCase())) { skipped++; return; }
+    state.bettors.push({ id: uid(), name, email: '', phone: '' });
     added++;
   });
+  syncRootFromState();
   save(); renderBettors(); updateHeader();
   showImportMsg('import-bettors-msg', added, skipped);
   input.value = '';
