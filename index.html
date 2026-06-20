@@ -476,7 +476,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.3</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.4</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -1295,9 +1295,16 @@ function loadEntrySheet() {
   // Build entry rows
   const rows = document.getElementById('entry-rows');
 
-  // Generate $0-$100 options once
+  // Generate options: blank, then common amounts, then remaining $1-$100
+  const common = [1, 2, 5, 10, 20, 50, 100];
+  const rest = Array.from({length: 100}, (_,i) => i+1).filter(n => !common.includes(n));
   const amtOptions = '<option value="0">—</option>' +
-    Array.from({length: 100}, (_,i) => '<option value="' + (i+1) + '">$' + (i+1) + '</option>').join('');
+    '<optgroup label="Common">' +
+    common.map(n => '<option value="' + n + '">$' + n + '</option>').join('') +
+    '</optgroup>' +
+    '<optgroup label="Other">' +
+    rest.map(n => '<option value="' + n + '">$' + n + '</option>').join('') +
+    '</optgroup>';
 
   function makeSelect(teamId, type, isField, color, borderColor) {
     return '<select data-team="' + teamId + '" data-type="' + type + '"' + (isField ? ' data-field="1"' : '') +
