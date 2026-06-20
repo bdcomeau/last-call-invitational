@@ -383,6 +383,22 @@
         </div>
         <div class="tote-footer" id="tote-footer">Handle (3%): $0.00 · Net payout pool: $0.00</div>
       </div>
+
+      <!-- Live Odds -->
+      <div class="card" id="odds-card" style="display:none;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">📊 LIVE ODDS — ESTIMATED RETURN PER $1 BET</div>
+        <div style="display:grid;grid-template-columns:1fr 58px 58px 58px;gap:3px;margin-bottom:4px;padding:0 6px;">
+          <div style="font-size:9px;color:#7A9E89;letter-spacing:1px;">TEAM</div>
+          <div style="font-size:9px;color:#3DB86E;text-align:center;letter-spacing:1px;">WIN</div>
+          <div style="font-size:9px;color:#5AAEDD;text-align:center;letter-spacing:1px;">PLACE</div>
+          <div style="font-size:9px;color:#B07FDE;text-align:center;letter-spacing:1px;">SHOW</div>
+        </div>
+        <div id="odds-rows"></div>
+        <div style="font-size:10px;color:#7A9E89;margin-top:8px;padding-top:8px;border-top:1px solid #2B4033;line-height:1.5;">
+          Odds = estimated return per $1 wagered · 4.2× means $10 bet returns ~$42 · Updates live as bets are entered
+        </div>
+      </div>
+
       <div class="card">
         <div style="display:flex;flex-direction:column;gap:10px;">
           <div class="field"><label>Bettor</label>
@@ -499,7 +515,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v6.2</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v6.3</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -1209,6 +1225,72 @@ function updateTote() {
   document.getElementById('tote-show').textContent  = fmt(show);
   document.getElementById('tote-footer').textContent =
     `Handle (${state.handlePct}%): ${fmt(house)} · Net payout pool: ${fmt(total - house)}`;
+  updateOdds();
+}
+
+function updateOdds() {
+  const card = document.getElementById('odds-card');
+  const rows = document.getElementById('odds-rows');
+  const teams = [...(state.teams||[])].sort((a,b) => a.name.localeCompare(b.name));
+  if (!card || !rows || !teams.length || !state.bets.length) {
+    if (card) card.style.display = 'none';
+    return;
+  }
+  card.style.display = '';
+
+  const take = state.handlePct / 100;
+  const bets = state.bets;
+
+  // Net pool per type after handle
+  const netWin   = bets.filter(b=>b.type==='win').reduce((s,b)=>s+b.amount,0)   * (1-take);
+  const netPlace = bets.filter(b=>b.type==='place').reduce((s,b)=>s+b.amount,0) * (1-take);
+  const netShow  = bets.filter(b=>b.type==='show').reduce((s,b)=>s+b.amount,0)  * (1-take);
+
+  // For each team: odds = net pool / stake on that team (return per $1 bet)
+  // Include field bets as contributing to every team's pool share
+  function teamStake(type, teamId) {
+    return bets.filter(b => b.type === type && (b.teamId === teamId || b.teamId === 'FIELD'))
+               .reduce((s,b) => s + b.amount, 0);
+  }
+
+  function oddsDisplay(netPool, stake) {
+    if (stake <= 0) return '<span style="color:#2B4033;">—</span>';
+    const multiplier = netPool / stake;
+    // Format: show as X.X× with color coding
+    const val = multiplier.toFixed(1) + '×';
+    const color = multiplier >= 5 ? '#D4A843'   // longshot — gold
+                : multiplier >= 2 ? '#3DB86E'   // decent odds — green
+                :                   '#7A9E89';  // short odds — grey
+    return '<span style="font-family:Barlow Condensed,sans-serif;font-size:14px;font-weight:700;color:' + color + ';">' + val + '</span>';
+  }
+
+  // Also show FIELD row
+  const allEntities = [...teams, { id: 'FIELD', name: '🌐 Field' }];
+
+  rows.innerHTML = allEntities.map((t,i) => {
+    const winStake   = teamStake('win',   t.id);
+    const placeStake = teamStake('place', t.id);
+    const showStake  = teamStake('show',  t.id);
+
+    // Skip teams with no bets at all
+    if (winStake === 0 && placeStake === 0 && showStake === 0) return '';
+
+    // Place pool splits 50/50 between 1st and 2nd place winners
+    // Show pool splits into thirds — but we don't know placements yet
+    // So show "current odds if this team finishes 1st" for WIN
+    // and approximate for PLACE/SHOW
+    const winOdds   = oddsDisplay(netWin,         winStake);
+    const placeOdds = oddsDisplay(netPlace / 2,   placeStake);
+    const showOdds  = oddsDisplay(netShow  / 3,   showStake);
+
+    const bg = i % 2 === 0 ? '#162219' : '#1A2820';
+    return '<div style="display:grid;grid-template-columns:1fr 58px 58px 58px;gap:3px;align-items:center;padding:5px 6px;background:' + bg + ';border-radius:5px;margin-bottom:2px;">' +
+      '<div style="font-size:12px;font-weight:600;color:#EDE8DC;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(t.name) + '</div>' +
+      '<div style="text-align:center;">' + winOdds   + '</div>' +
+      '<div style="text-align:center;">' + placeOdds + '</div>' +
+      '<div style="text-align:center;">' + showOdds  + '</div>' +
+    '</div>';
+  }).join('');
 }
 
 function updateAmountHint() {
