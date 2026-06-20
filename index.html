@@ -540,7 +540,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.0</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.1</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -979,21 +979,24 @@ function prepareCashLabels() {
   const now    = new Date().toLocaleString('en-CA', { dateStyle:'long', timeStyle:'short' });
 
   const css =
-    '@page { size: letter portrait; margin: 0.6in 0.65in; }' +
-    'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; color: #111; margin: 0; background: #fff; }' +
-    '.page { page-break-after: always; }' +
+    '@page { size: letter portrait; margin: 0; }' +
+    'body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #111; margin: 0; background: #fff; }' +
+    // Each page is exactly letter size — content scaled to fit
+    '.page { width: 8.5in; height: 11in; padding: 0.55in 0.65in; box-sizing: border-box;' +
+      'page-break-after: always; page-break-inside: avoid; overflow: hidden;' +
+      'display: flex; flex-direction: column; }' +
     '.page:last-child { page-break-after: avoid; }' +
-    '.header { border-bottom: 2pt solid #1E2E23; padding-bottom: 10pt; margin-bottom: 14pt; }' +
-    '.ev-name { font-size: 18pt; font-weight: 700; color: #1E2E23; margin: 0 0 2pt; }' +
-    '.ev-sub { font-size: 9pt; color: #666; }' +
-    '.winner-box { background: #f9f6ee; border: 1.5pt solid #D4A843; border-radius: 6pt; padding: 12pt 14pt; margin-bottom: 14pt; }' +
-    '.winner-name { font-size: 20pt; font-weight: 700; margin: 0 0 2pt; }' +
-    '.ticket-ref { font-size: 9pt; color: #8B6914; font-weight: 700; letter-spacing: 0.5pt; }' +
-    '.standings { font-size: 9pt; color: #444; margin-bottom: 14pt; padding: 8pt 10pt; background: #f5f5f5; border-radius: 4pt; }' +
+    '.header { border-bottom: 2pt solid #1E2E23; padding-bottom: 8pt; margin-bottom: 10pt; flex-shrink: 0; }' +
+    '.ev-name { font-size: 16pt; font-weight: 700; color: #1E2E23; margin: 0 0 1pt; }' +
+    '.ev-sub { font-size: 8pt; color: #666; }' +
+    '.winner-box { background: #f9f6ee; border: 1.5pt solid #D4A843; border-radius: 5pt; padding: 8pt 12pt; margin-bottom: 8pt; flex-shrink: 0; }' +
+    '.winner-name { font-size: 18pt; font-weight: 700; margin: 0 0 1pt; }' +
+    '.ticket-ref { font-size: 8.5pt; color: #8B6914; font-weight: 700; letter-spacing: 0.5pt; }' +
+    '.standings { font-size: 8.5pt; color: #444; margin-bottom: 8pt; padding: 6pt 8pt; background: #f5f5f5; border-radius: 3pt; flex-shrink: 0; }' +
     '.standings strong { color: #1E2E23; }' +
-    '.bets-table { width: 100%; border-collapse: collapse; margin-bottom: 14pt; }' +
-    '.bets-table th { background: #1E2E23; color: #D4A843; font-size: 8.5pt; padding: 5pt 8pt; text-align: left; letter-spacing: 0.5pt; }' +
-    '.bets-table td { font-size: 10pt; padding: 5pt 8pt; border-bottom: 0.5pt solid #e0e0e0; vertical-align: middle; }' +
+    '.bets-table { width: 100%; border-collapse: collapse; margin-bottom: 8pt; }' +
+    '.bets-table th { background: #1E2E23; color: #D4A843; font-size: 8pt; padding: 4pt 7pt; text-align: left; letter-spacing: 0.5pt; }' +
+    '.bets-table td { font-size: 9.5pt; padding: 4pt 7pt; border-bottom: 0.5pt solid #e0e0e0; vertical-align: middle; }' +
     '.bets-table tr.win-row   td { background: #eef8f0; }' +
     '.bets-table tr.place-row td { background: #eef2f9; }' +
     '.bets-table tr.show-row  td { background: #f5eef9; }' +
@@ -1004,15 +1007,15 @@ function prepareCashLabels() {
     '.type-lose  { color: #ccc; }' +
     '.payout-cell { font-weight: 700; color: #1a6e2e; }' +
     '.lose-cell   { color: #ccc; font-size: 9pt; }' +
-    '.totals { border-top: 2pt solid #1E2E23; padding-top: 10pt; }' +
-    '.totals-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8pt; }' +
-    '.total-cell { text-align: center; padding: 8pt; border: 1pt solid #ddd; border-radius: 4pt; }' +
-    '.total-label { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 0.5pt; margin-bottom: 3pt; }' +
-    '.total-value { font-size: 16pt; font-weight: 700; }' +
+    '.totals { border-top: 2pt solid #1E2E23; padding-top: 8pt; flex-shrink: 0; margin-top: auto; }' +
+    '.totals-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6pt; }' +
+    '.total-cell { text-align: center; padding: 6pt; border: 1pt solid #ddd; border-radius: 3pt; }' +
+    '.total-label { font-size: 7.5pt; color: #666; text-transform: uppercase; letter-spacing: 0.5pt; margin-bottom: 2pt; }' +
+    '.total-value { font-size: 15pt; font-weight: 700; }' +
     '.total-wagered { color: #333; }' +
     '.total-payout  { color: #1a6e2e; }' +
     '.total-net     { color: #1a6e2e; }' +
-    '.footer { margin-top: 16pt; font-size: 8pt; color: #999; text-align: center; border-top: 0.5pt solid #ddd; padding-top: 8pt; }' +
+    '.footer { margin-top: 8pt; font-size: 7.5pt; color: #999; text-align: center; border-top: 0.5pt solid #ddd; padding-top: 6pt; flex-shrink: 0; }' +
     '@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }';
 
   const pages = winners.map(function(entry) {
