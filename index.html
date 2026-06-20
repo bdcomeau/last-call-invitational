@@ -272,6 +272,59 @@
       </div>
     </div>
 
+    <!-- ENTRY — Batch Bet Entry -->
+    <div class="screen" id="screen-entry">
+      <div class="section-head">📋 Bet Entry</div>
+
+      <!-- Bettor selector -->
+      <div class="card">
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">BETTOR</div>
+        <div style="display:flex;gap:8px;">
+          <select id="entry-bettor" style="flex:1;background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;" onchange="loadEntrySheet()">
+            <option value="">— Select Bettor —</option>
+          </select>
+          <button class="btn btn-ghost" onclick="printBettingSheet()" style="white-space:nowrap;font-size:12px;">🖨 Print Sheet</button>
+        </div>
+        <div style="font-size:10px;color:#7A9E89;margin-top:6px;">Select a bettor to load their entry grid, or print a blank sheet</div>
+      </div>
+
+      <!-- Entry grid -->
+      <div class="card" id="entry-grid-card" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div>
+            <div style="font-size:13px;font-weight:700;" id="entry-bettor-name"></div>
+            <div style="font-size:10px;color:#7A9E89;" id="entry-ticket-ref"></div>
+          </div>
+          <button class="btn btn-primary" onclick="submitEntrySheet()" style="font-size:13px;padding:8px 14px;">✓ Submit Bets</button>
+        </div>
+
+        <!-- Column headers -->
+        <div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;margin-bottom:6px;padding:0 4px;">
+          <div style="font-size:10px;color:#7A9E89;letter-spacing:1px;">TEAM</div>
+          <div style="font-size:10px;color:#3DB86E;letter-spacing:1px;text-align:center;">WIN</div>
+          <div style="font-size:10px;color:#5AAEDD;letter-spacing:1px;text-align:center;">PLACE</div>
+          <div style="font-size:10px;color:#B07FDE;letter-spacing:1px;text-align:center;">SHOW</div>
+        </div>
+
+        <div id="entry-rows" style="display:flex;flex-direction:column;gap:4px;max-height:420px;overflow-y:auto;"></div>
+
+        <!-- Totals row -->
+        <div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;margin-top:8px;padding:8px 4px;border-top:1px solid #2B4033;">
+          <div style="font-size:11px;font-weight:700;color:#D4A843;">TOTAL</div>
+          <div style="font-size:12px;font-weight:700;color:#3DB86E;text-align:center;" id="entry-total-win">$0</div>
+          <div style="font-size:12px;font-weight:700;color:#5AAEDD;text-align:center;" id="entry-total-place">$0</div>
+          <div style="font-size:12px;font-weight:700;color:#B07FDE;text-align:center;" id="entry-total-show">$0</div>
+        </div>
+        <div style="text-align:right;font-size:13px;font-weight:700;color:#D4A843;padding:4px;" id="entry-grand-total">Grand Total: $0.00</div>
+      </div>
+
+      <!-- Submitted tickets for this bettor -->
+      <div class="card" id="entry-tickets-card" style="display:none;">
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">SUBMITTED TICKETS</div>
+        <div id="entry-tickets-list"></div>
+      </div>
+    </div>
+
     <!-- WAGERS -->
     <div class="screen" id="screen-wagers">
       <div class="section-head">🎰 Place Wagers</div>
@@ -403,12 +456,13 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v4.7</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v4.9</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
     <button onclick="showTab('setup')"><span class="tab-icon">⚙️</span><span class="tab-label">SETUP</span></button>
     <button onclick="showTab('bettors')"><span class="tab-icon">👥</span><span class="tab-label">BETTORS</span></button>
+    <button onclick="showTab('entry')"><span class="tab-icon">📋</span><span class="tab-label">ENTRY</span></button>
     <button onclick="showTab('wagers')"><span class="tab-icon">🎰</span><span class="tab-label">WAGERS</span></button>
     <button onclick="showTab('placements')"><span class="tab-icon">🏆</span><span class="tab-label">PLACES</span></button>
     <button onclick="showTab('results')"><span class="tab-icon">📋</span><span class="tab-label">RESULTS</span></button>
@@ -507,7 +561,7 @@ function load() {
         createdAt: new Date().toISOString(), archived: false,
         handlePct: oldState.handlePct || 3,
         teams: oldState.teams || [], bets: oldState.bets || [],
-        placements: oldState.placements || { p1:'', p2:'', p3:'' }
+        placements: oldState.placements || { p1:'', p2:'', p3:'' }, nextTicketNum: 1
       };
       root = { bettors: oldState.bettors || [], events: [migEvent], activeEventId: migEvent.id };
       syncStateFromRoot();
@@ -538,12 +592,13 @@ function showTab(tab) {
     document.querySelectorAll('#tabbar button').forEach(b => b.classList.remove('active'));
     const screen = document.getElementById('screen-' + tab);
     if (screen) screen.classList.add('active');
-    const tabs = ['events','setup','bettors','wagers','placements','results'];
+    const tabs = ['events','setup','bettors','entry','wagers','placements','results'];
     const idx = tabs.indexOf(tab);
     const btns = document.querySelectorAll('#tabbar button');
     if (idx >= 0 && btns[idx]) btns[idx].classList.add('active');
     window.scrollTo(0, 0);
     if (tab === 'events')     renderEvents();
+    if (tab === 'entry')      loadEntryTab();
     if (tab === 'wagers')     { renderBetDropdowns(); renderWagers(); updateTote(); }
     if (tab === 'placements') renderPlacements();
     if (tab === 'results')    renderResults();
@@ -574,7 +629,7 @@ function newTournament() {
   if (!name) return;
   const ev = {
     id: uid(), name: name, createdAt: new Date().toISOString(), archived: false,
-    handlePct: 3, teams: [], bets: [], placements: { p1:'', p2:'', p3:'' }
+    handlePct: 3, teams: [], bets: [], placements: { p1:'', p2:'', p3:'' }, nextTicketNum: 1
   };
   if (!root.events) root.events = [];
   root.events.push(ev);
@@ -1167,6 +1222,301 @@ function printTicketOverlay() {
   window.print();
 }
 
+// ─── ENTRY SHEET ─────────────────────────────────────────────────────────────
+// Generates a unique ticket reference number for the active event
+function genTicketRef() {
+  const ev = activeEvent();
+  if (!ev) return 'LCI-001';
+  if (!ev.nextTicketNum) ev.nextTicketNum = 1;
+  const year = new Date(ev.createdAt).getFullYear();
+  const num  = String(ev.nextTicketNum).padStart(3, '0');
+  ev.nextTicketNum++;
+  return 'LCI-' + year + '-' + num;
+}
+
+function loadEntryTab() {
+  // Populate bettor dropdown
+  const sel = document.getElementById('entry-bettor');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Select Bettor —</option>' +
+    [...(state.bettors||[])].sort((a,b) => a.name.localeCompare(b.name))
+    .map(b => '<option value="' + b.id + '"' + (b.id===cur?' selected':'') + '>' + esc(b.name) + '</option>').join('');
+  if (cur) loadEntrySheet();
+}
+
+function loadEntrySheet() {
+  const sel      = document.getElementById('entry-bettor');
+  const bettorId = sel ? sel.value : '';
+  const gridCard = document.getElementById('entry-grid-card');
+  const tickCard = document.getElementById('entry-tickets-card');
+
+  if (!bettorId) {
+    if (gridCard) gridCard.style.display = 'none';
+    if (tickCard) tickCard.style.display = 'none';
+    return;
+  }
+
+  const bettor = bettorById(bettorId);
+  const teams  = [...(state.teams||[])].sort((a,b) => a.name.localeCompare(b.name));
+
+  // Show grid
+  if (gridCard) gridCard.style.display = '';
+  const nameEl = document.getElementById('entry-bettor-name');
+  const refEl  = document.getElementById('entry-ticket-ref');
+  if (nameEl) nameEl.textContent = bettor ? bettor.name : '';
+
+  // Show pending ticket ref (will be assigned on submit)
+  const ev = activeEvent();
+  const nextNum = ev ? (ev.nextTicketNum || 1) : 1;
+  const year    = ev ? new Date(ev.createdAt).getFullYear() : new Date().getFullYear();
+  if (refEl) refEl.textContent = 'Next ticket: LCI-' + year + '-' + String(nextNum).padStart(3,'0');
+
+  // Build entry rows
+  const rows = document.getElementById('entry-rows');
+  if (rows) {
+    const teamRows = teams.map(t =>
+      '<div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;align-items:center;padding:4px 4px;">' +
+        '<div style="font-size:13px;font-weight:600;color:#EDE8DC;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(t.name) + '">' + esc(t.name) + '</div>' +
+        '<input type="number" min="0" step="1" placeholder="—" data-team="' + t.id + '" data-type="win" ' +
+          'style="background:#162219;border:1px solid #2B4033;border-radius:6px;color:#3DB86E;padding:6px 4px;font-size:13px;text-align:center;outline:none;width:100%;" ' +
+          'oninput="updateEntryTotals()" />' +
+        '<input type="number" min="0" step="1" placeholder="—" data-team="' + t.id + '" data-type="place" ' +
+          'style="background:#162219;border:1px solid #2B4033;border-radius:6px;color:#5AAEDD;padding:6px 4px;font-size:13px;text-align:center;outline:none;width:100%;" ' +
+          'oninput="updateEntryTotals()" />' +
+        '<input type="number" min="0" step="1" placeholder="—" data-team="' + t.id + '" data-type="show" ' +
+          'style="background:#162219;border:1px solid #2B4033;border-radius:6px;color:#B07FDE;padding:6px 4px;font-size:13px;text-align:center;outline:none;width:100%;" ' +
+          'oninput="updateEntryTotals()" />' +
+      '</div>'
+    ).join('');
+
+    // Field row — amount is multiplied by number of teams on submit
+    const nTeams = teams.length;
+    const fieldRow =
+      '<div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;align-items:center;padding:4px 4px;border-top:1px solid #2B4033;margin-top:4px;">' +
+        '<div style="font-size:13px;font-weight:600;color:#D4A843;">🌐 Field' +
+          (nTeams > 0 ? '<div style="font-size:9px;color:#7A9E89;">×' + nTeams + ' teams</div>' : '') +
+        '</div>' +
+        '<input type="number" min="0" step="1" placeholder="—" data-team="FIELD" data-type="win" data-field="1" ' +
+          'style="background:#162219;border:1px solid #D4A84344;border-radius:6px;color:#3DB86E;padding:6px 4px;font-size:13px;text-align:center;outline:none;width:100%;" ' +
+          'oninput="updateEntryTotals()" />' +
+        '<input type="number" min="0" step="1" placeholder="—" data-team="FIELD" data-type="place" data-field="1" ' +
+          'style="background:#162219;border:1px solid #D4A84344;border-radius:6px;color:#5AAEDD;padding:6px 4px;font-size:13px;text-align:center;outline:none;width:100%;" ' +
+          'oninput="updateEntryTotals()" />' +
+        '<input type="number" min="0" step="1" placeholder="—" data-team="FIELD" data-type="show" data-field="1" ' +
+          'style="background:#162219;border:1px solid #D4A84344;border-radius:6px;color:#B07FDE;padding:6px 4px;font-size:13px;text-align:center;outline:none;width:100%;" ' +
+          'oninput="updateEntryTotals()" />' +
+      '</div>';
+
+    rows.innerHTML = teamRows + fieldRow;
+  }
+  updateEntryTotals();
+  renderEntryTickets(bettorId);
+}
+
+function updateEntryTotals() {
+  const inputs = document.querySelectorAll('#entry-rows input');
+  const nTeams = (state.teams||[]).length;
+  let winTotal = 0, placeTotal = 0, showTotal = 0;
+  inputs.forEach(inp => {
+    const v = parseFloat(inp.value) || 0;
+    const mult = inp.dataset.field ? Math.max(1, nTeams) : 1;
+    if (inp.dataset.type === 'win')   winTotal   += v * mult;
+    if (inp.dataset.type === 'place') placeTotal += v * mult;
+    if (inp.dataset.type === 'show')  showTotal  += v * mult;
+  });
+  const grand = winTotal + placeTotal + showTotal;
+  const tw = document.getElementById('entry-total-win');
+  const tp = document.getElementById('entry-total-place');
+  const ts = document.getElementById('entry-total-show');
+  const tg = document.getElementById('entry-grand-total');
+  if (tw) tw.textContent = fmt(winTotal);
+  if (tp) tp.textContent = fmt(placeTotal);
+  if (ts) ts.textContent = fmt(showTotal);
+  if (tg) tg.textContent = 'Grand Total: ' + fmt(grand);
+}
+
+function submitEntrySheet() {
+  const sel      = document.getElementById('entry-bettor');
+  const bettorId = sel ? sel.value : '';
+  if (!bettorId) { alert('Please select a bettor.'); return; }
+
+  const inputs = document.querySelectorAll('#entry-rows input');
+  const betsToAdd = [];
+  const nTeams = (state.teams||[]).length;
+  inputs.forEach(inp => {
+    const unitAmount = parseFloat(inp.value);
+    if (unitAmount > 0) {
+      const isField     = inp.dataset.field === '1';
+      const storedAmount = isField && nTeams > 0 ? unitAmount * nTeams : unitAmount;
+      betsToAdd.push({
+        teamId: inp.dataset.team, type: inp.dataset.type,
+        amount: storedAmount, unitAmount: isField ? unitAmount : null,
+        fieldTeamCount: isField && nTeams > 0 ? nTeams : null
+      });
+    }
+  });
+
+  if (!betsToAdd.length) { alert('No amounts entered — fill in at least one bet.'); return; }
+
+  const grand = betsToAdd.reduce((s,b) => s + b.amount, 0);
+  const teamNames = [...new Set(betsToAdd.map(b => teamName(b.teamId)))].join(', ');
+  if (!confirm('Submit ' + betsToAdd.length + ' bet(s) for ' + fmt(grand) + ' total?\n\nTeams: ' + teamNames)) return;
+
+  const ticketRef = genTicketRef();
+  betsToAdd.forEach(b => {
+    state.bets.push({
+      id: uid(), bettorId, teamId: b.teamId, type: b.type,
+      amount: b.amount, unitAmount: b.unitAmount, fieldTeamCount: b.fieldTeamCount,
+      ticketRef, comboGroupId: null, combo: null
+    });
+  });
+
+  syncRootFromState();
+  save();
+  updateTote();
+  updateHeader();
+
+  // Clear the grid
+  document.querySelectorAll('#entry-rows input').forEach(inp => { inp.value = ''; });
+  updateEntryTotals();
+  renderEntryTickets(bettorId);
+
+  // Update ticket ref preview
+  const ev = activeEvent();
+  const nextNum = ev ? (ev.nextTicketNum || 1) : 1;
+  const year    = ev ? new Date(ev.createdAt).getFullYear() : new Date().getFullYear();
+  const refEl   = document.getElementById('entry-ticket-ref');
+  if (refEl) refEl.textContent = 'Next ticket: LCI-' + year + '-' + String(nextNum).padStart(3,'0');
+
+  alert('✓ Ticket ' + ticketRef + ' submitted — ' + betsToAdd.length + ' bet(s), ' + fmt(grand) + ' total.');
+}
+
+function renderEntryTickets(bettorId) {
+  const card = document.getElementById('entry-tickets-card');
+  const list = document.getElementById('entry-tickets-list');
+  if (!card || !list) return;
+
+  // Group this bettor's bets by ticketRef
+  const bettorBets = (state.bets||[]).filter(b => b.bettorId === bettorId && b.ticketRef);
+  if (!bettorBets.length) { card.style.display = 'none'; return; }
+
+  card.style.display = '';
+  const ticketGroups = {};
+  bettorBets.forEach(b => {
+    if (!ticketGroups[b.ticketRef]) ticketGroups[b.ticketRef] = [];
+    ticketGroups[b.ticketRef].push(b);
+  });
+
+  list.innerHTML = Object.entries(ticketGroups).map(([ref, bets]) => {
+    const total = bets.reduce((s,b) => s + b.amount, 0);
+    const lines = bets.map(b =>
+      '<div style="display:flex;justify-content:space-between;font-size:11px;color:#7A9E89;padding:2px 0;">' +
+        '<span>' + esc(teamName(b.teamId)) + ' · <span style="color:' + TYPE_COLOR[b.type] + ';font-weight:700;text-transform:uppercase;">' + b.type + '</span></span>' +
+        '<span>' + fmt(b.amount) + '</span>' +
+      '</div>'
+    ).join('');
+    return '<div style="background:#162219;border-radius:8px;padding:10px 12px;margin-bottom:8px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+        '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:#D4A843;">' + ref + '</span>' +
+        '<span style="font-size:12px;font-weight:700;color:#EDE8DC;">' + fmt(total) + '</span>' +
+      '</div>' +
+      lines +
+    '</div>';
+  }).join('');
+}
+
+function printBettingSheet() {
+  const teams = [...(state.teams||[])].sort((a,b) => a.name.localeCompare(b.name));
+  const ev    = activeEvent();
+  const evName = ev ? ev.name : (state.tournamentName || 'Last Call Invitational');
+  const year  = ev ? new Date(ev.createdAt).getFullYear() : new Date().getFullYear();
+
+  const rows = teams.map((t,i) =>
+    '<tr style="background:' + (i%2===0?'#fff':'#f9f9f9') + ';">' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;font-size:12px;">' + esc(t.name) + '</td>' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;width:70px;"></td>' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;width:70px;"></td>' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;width:70px;"></td>' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;width:80px;background:#f0f0f0;"></td>' +
+    '</tr>'
+  ).join('');
+
+  // Field row at bottom
+  const fieldRow =
+    '<tr style="background:#fffbf0;border-top:2px solid #D4A843;">' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;font-size:12px;font-weight:700;color:#8F6E2A;">🌐 FIELD (×' + teams.length + ' teams)</td>' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;font-size:10px;color:#888;vertical-align:bottom;">per-team $</td>' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;font-size:10px;color:#888;vertical-align:bottom;">per-team $</td>' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;font-size:10px;color:#888;vertical-align:bottom;">per-team $</td>' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;background:#f0f0f0;"></td>' +
+    '</tr>';
+
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"/>' +
+    '<title>' + esc(evName) + ' — Betting Sheet</title>' +
+    '<style>' +
+      'body{font-family:Arial,sans-serif;margin:20px;font-size:13px;color:#000;}' +
+      'h2{margin:0 0 2px;font-size:18px;}' +
+      '.sub{color:#555;font-size:11px;margin-bottom:12px;}' +
+      '.bettor-box{border:1px solid #999;border-radius:4px;padding:8px 12px;margin-bottom:14px;min-height:32px;}' +
+      '.bettor-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}' +
+      'table{width:100%;border-collapse:collapse;}' +
+      'th{background:#1E2E23;color:#D4A843;padding:7px 10px;font-size:11px;letter-spacing:1px;border:1px solid #999;}' +
+      'td{font-size:12px;}' +
+      '.total-row td{background:#f5f5f5;font-weight:700;border-top:2px solid #333;}' +
+      '.ref{font-size:10px;color:#999;text-align:right;margin-top:10px;}' +
+      '@media print{body{margin:10px;}}' +
+    '</style></head><body>' +
+    '<h2>' + esc(evName) + '</h2>' +
+    '<div class="sub">Texas Scramble &middot; ' + year + ' &middot; Parimutuel Betting Sheet</div>' +
+    '<div class="bettor-label">Name of Bettor</div>' +
+    '<div class="bettor-box"></div>' +
+    '<table>' +
+      '<thead><tr>' +
+        '<th style="text-align:left;">TEAM NAME</th>' +
+        '<th style="color:#6EE89A;">WIN $</th>' +
+        '<th style="color:#7EC8E3;">PLACE $</th>' +
+        '<th style="color:#C9A0E8;">SHOW $</th>' +
+        '<th>TOTAL $</th>' +
+      '</tr></thead>' +
+      '<tbody>' + rows + fieldRow + '</tbody>' +
+      '<tfoot><tr class="total-row">' +
+        '<td style="padding:8px 10px;border:1px solid #ddd;">TOTAL</td>' +
+        '<td style="padding:8px 10px;border:1px solid #ddd;"></td>' +
+        '<td style="padding:8px 10px;border:1px solid #ddd;"></td>' +
+        '<td style="padding:8px 10px;border:1px solid #ddd;"></td>' +
+        '<td style="padding:8px 10px;border:1px solid #ddd;background:#f0f0f0;"></td>' +
+      '</tr></tfoot>' +
+    '</table>' +
+    '<div class="ref">Last Call Invitational &middot; ' + year + '</div>' +
+    '</body></html>';
+
+  // Use in-page print style (same approach as ticket — no new tab)
+  const styleId = 'sheet-print-style';
+  let s = document.getElementById(styleId);
+  if (!s) {
+    s = document.createElement('style');
+    s.id = styleId;
+    s.textContent = '@media print { body > * { display:none !important; } #sheet-print-wrapper { display:block !important; } }';
+    document.head.appendChild(s);
+  }
+  let wrapper = document.getElementById('sheet-print-wrapper');
+  if (!wrapper) {
+    wrapper = document.createElement('div');
+    wrapper.id = 'sheet-print-wrapper';
+    wrapper.style.display = 'none';
+    document.body.appendChild(wrapper);
+  }
+  // Inject the HTML into wrapper's shadow
+  wrapper.innerHTML = '';
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;';
+  iframe.srcdoc = html;
+  wrapper.appendChild(iframe);
+  iframe.onload = function() { iframe.contentWindow.print(); };
+  window.print();
+}
+
 // ─── PLACEMENTS ───────────────────────────────────────────────────────────────
 function renderPlacements() {
   const noTeams = document.getElementById('no-teams-msg');
@@ -1362,19 +1712,44 @@ function renderResults() {
     const id = entry[0], s = entry[1];
     const bettor  = bettorById(id);
     const netGain = Math.round((s.payout - s.wagered) * 100) / 100;
-    const betLines = s.bets.map(function(b) {
+
+    // Group bets by ticketRef
+    const ticketGroups = {};
+    const ungrouped = [];
+    s.bets.forEach(function(b) {
+      if (b.ticketRef) {
+        if (!ticketGroups[b.ticketRef]) ticketGroups[b.ticketRef] = [];
+        ticketGroups[b.ticketRef].push(b);
+      } else { ungrouped.push(b); }
+    });
+
+    function renderBetLine(b) {
       const col = b.payout > 0 ? '#3DB86E' : '#7A9E89';
       const fw  = b.payout > 0 ? 600 : 400;
       return '<div class="bet-line">' +
         '<span>' + esc(teamName(b.teamId)) + ' · <span style="color:' + TYPE_COLOR[b.type] + ';text-transform:uppercase;font-weight:700;">' + b.type + '</span> · ' + fmt(b.amount) + '</span>' +
         '<span style="color:' + col + ';font-weight:' + fw + ';">' + (b.payout>0?'→ '+fmt(b.payout):'— no payout') + '</span>' +
       '</div>';
+    }
+
+    const ticketHTML = Object.entries(ticketGroups).map(function(te) {
+      const ref = te[0], tbets = te[1];
+      const tTotal  = tbets.reduce(function(s,b){return s+b.amount;},0);
+      const tPayout = tbets.reduce(function(s,b){return s+b.payout;},0);
+      return '<div style="border:1px solid #2B4033;border-radius:6px;padding:6px 8px;margin-bottom:5px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+          '<span style="font-family:Barlow Condensed,sans-serif;font-size:12px;font-weight:700;color:#D4A843;">' + ref + '</span>' +
+          '<span style="font-size:11px;color:#7A9E89;">' + tbets.length + ' bet(s) · ' + fmt(tTotal) + (tPayout>0?' <span style="color:#3DB86E;font-weight:700;">→ '+fmt(tPayout)+'</span>':'') + '</span>' +
+        '</div>' +
+        tbets.map(renderBetLine).join('') +
+      '</div>';
     }).join('');
+
     return '<div class="bettor-card" style="margin-bottom:10px;">' +
       '<div class="bettor-header">' +
         '<div>' +
-          '<div class="bettor-name">' + esc(bettor?.name||id) + '</div>' +
-          '<div class="bettor-contact">' + esc(bettor?.email||'') + (bettor?.phone?' · '+esc(bettor.phone):'') + '</div>' +
+          '<div class="bettor-name">' + esc(bettor&&bettor.name?bettor.name:id) + '</div>' +
+          '<div class="bettor-contact">' + esc(bettor&&bettor.email?bettor.email:'') + (bettor&&bettor.phone?' · '+esc(bettor.phone):'') + '</div>' +
           '<div class="bettor-wagered">Wagered: ' + fmt(s.wagered) + '</div>' +
         '</div>' +
         '<div style="text-align:right;">' +
@@ -1382,7 +1757,7 @@ function renderResults() {
           '<div class="bettor-net" style="color:' + (netGain>=0?'#3DB86E':'#E05252') + ';">' + (netGain>=0?'+':'−') + fmt(Math.abs(netGain)) + ' ' + (netGain>=0?'profit':'loss') + '</div>' +
         '</div>' +
       '</div>' +
-      '<div style="margin-top:8px;">' + betLines + '</div>' +
+      '<div style="margin-top:8px;">' + ticketHTML + ungrouped.map(renderBetLine).join('') + '</div>' +
     '</div>';
   }).join('');
 
