@@ -217,8 +217,8 @@
       <div class="section-head">⚙️ Tournament Setup</div>
       <div class="card">
         <div class="field">
-          <label>Tournament Name</label>
-          <input type="text" id="tournament-name" placeholder="Last Call Invitational 2025" />
+          <label>Event Name</label>
+          <input type="text" id="tournament-name" placeholder="Last Call Invitational 2026" />
         </div>
       </div>
       <div class="card">
@@ -540,7 +540,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v6.8</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.0</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -738,6 +738,9 @@ function newTournament() {
   syncStateFromRoot();
   save();
   if (nameEl) nameEl.value = '';
+  // Pre-fill the event name on Setup screen
+  const tnEl = document.getElementById('tournament-name');
+  if (tnEl) tnEl.value = name;
   updateHeader();
   renderEvents();
   showTab('setup');
@@ -2244,7 +2247,7 @@ function calcPayouts() {
       if (b.type === 'win'   && covers(b,0)) payout = winShare(b.amount);
       if (b.type === 'place' && (covers(b,0) || covers(b,1))) payout = plShare(b.amount);
       if (b.type === 'show'  && (covers(b,0) || covers(b,1) || covers(b,2))) payout = shShare(b.amount);
-      return { ...b, payout: Math.round(payout * 100) / 100 };
+      return { ...b, payout };  // keep full precision until final rounding
     });
 
   } else {
@@ -2289,17 +2292,20 @@ function calcPayouts() {
         else if (covers(b,1)) payout = shShare[1](b.amount);
         else if (covers(b,2)) payout = shShare[2](b.amount);
       }
-      return { ...b, payout: Math.round(payout * 100) / 100 };
+      return { ...b, payout };  // keep full precision until final rounding
     });
   }
 
   // Rounding guard: total payout must never exceed net pool
   const rawTotal = betResults.reduce((s,b) => s + b.payout, 0);
   const netPool  = take === 0 ? totalCollected : Math.round(totalCollected * (1 - take) * 100) / 100;
-  let scaledResults = betResults;
-  if (rawTotal > netPool + 0.01) {
+  let scaledResults;
+  if (rawTotal > netPool + 0.001) {
     const scale = netPool / rawTotal;
     scaledResults = betResults.map(b => ({ ...b, payout: Math.round(b.payout * scale * 100) / 100 }));
+  } else {
+    // Round each payout to cents now that we know the total is within bounds
+    scaledResults = betResults.map(b => ({ ...b, payout: Math.round(b.payout * 100) / 100 }));
   }
 
   const totalPayout   = scaledResults.reduce((s,b) => s + b.payout, 0);
