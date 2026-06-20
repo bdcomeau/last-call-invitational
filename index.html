@@ -414,10 +414,18 @@
         <input type="text" class="bare" id="wager-search" placeholder="🔍  Filter wagers…" oninput="renderWagers()" style="margin-bottom:10px;" />
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;" id="wagers-count"></div>
         <div class="scroll-list" id="wagers-list" style="max-height:440px;"></div>
+        <!-- Cash envelope labels -->
+        <div class="card" style="border-color:#D4A84344;">
+          <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:8px;">🏷 CASH ENVELOPE LABELS</div>
+          <div style="font-size:12px;color:#7A9E89;margin-bottom:10px;line-height:1.5;">
+            Prints one label per winning bettor for Brother QL-720NW (62×100mm).<br/>
+            Each label shows ticket number, bets placed, winning bets highlighted, and payout amount.
+          </div>
+          <button class="btn btn-primary" onclick="prepareCashLabels()" style="width:100%;">🏷 Prepare Cash Envelope Labels</button>
+          <button id="label-print-btn" class="btn btn-primary" style="display:none;width:100%;margin-top:8px;font-size:15px;padding:14px;">🖨 Print Labels on QL-720NW</button>
+        </div>
       </div>
     </div>
-
-    <!-- PLACEMENTS -->
     <div class="screen" id="screen-placements">
       <div class="section-head">🏆 Final Placements</div>
       <div class="card">
@@ -491,7 +499,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.8</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.9</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -882,6 +890,138 @@ function initResetSlider() {
   document.addEventListener('touchmove',  onMove, { passive: false });
   document.addEventListener('mouseup',  onEnd);
   document.addEventListener('touchend', onEnd);
+}
+
+// ─── CASH ENVELOPE LABELS ────────────────────────────────────────────────────
+// Generates 62mm × 100mm labels for Brother QL-720NW
+// One label per winning bettor, printed after results are set.
+
+function prepareCashLabels() {
+  const { p1, p2, p3 } = state.placements;
+  if (!p1 || !p2 || !p3) {
+    alert('Please set the final placements (1st, 2nd, 3rd) on the Placements tab first.');
+    return;
+  }
+
+  const { betResults, totalPayout } = calcPayouts();
+
+  // Group by bettor, only include bettors with at least one winning payout
+  const bettorMap = {};
+  betResults.forEach(b => {
+    if (!bettorMap[b.bettorId]) bettorMap[b.bettorId] = { wagered:0, payout:0, bets:[] };
+    bettorMap[b.bettorId].wagered += b.amount;
+    bettorMap[b.bettorId].payout  += b.payout;
+    bettorMap[b.bettorId].bets.push(b);
+  });
+
+  const winners = Object.entries(bettorMap)
+    .filter(([,s]) => s.payout > 0)
+    .sort((a,b) => b[1].payout - a[1].payout);
+
+  if (!winners.length) {
+    alert('No winning bets found. Check that placements are set and bets exist.');
+    return;
+  }
+
+  const ev     = activeEvent();
+  const evName = ev ? ev.name : (state.tournamentName || 'Last Call Invitational');
+  const p1Name = teamName(p1), p2Name = teamName(p2), p3Name = teamName(p3);
+  const typeColors = { win:'#2a7a3b', place:'#1a5c8a', show:'#6a3a8a' };
+
+  // One label per winning bettor
+  // 62mm × 100mm ≈ 234px × 378px at 96dpi, but we use mm units for accuracy
+  const labelCSS =
+    '@page { size: 62mm 100mm; margin: 0; }' +
+    'body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background: #fff; color: #000; }' +
+    '.label { width: 62mm; height: 100mm; padding: 3mm 3.5mm; box-sizing: border-box; page-break-after: always; overflow: hidden; display: flex; flex-direction: column; }' +
+    '.label:last-child { page-break-after: avoid; }' +
+    '.ev-name { font-size: 8pt; font-weight: 700; letter-spacing: 0.3pt; border-bottom: 0.5pt solid #000; padding-bottom: 1.5mm; margin-bottom: 1.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
+    '.ticket-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1mm; }' +
+    '.ticket-num { font-size: 11pt; font-weight: 900; color: #8B6914; letter-spacing: 0.5pt; }' +
+    '.bettor-name { font-size: 9pt; font-weight: 700; }' +
+    '.results-row { font-size: 6.5pt; color: #333; margin-bottom: 1.5mm; padding-bottom: 1.5mm; border-bottom: 0.5pt solid #ccc; }' +
+    '.bets-head { font-size: 6pt; font-weight: 700; letter-spacing: 0.5pt; color: #555; text-transform: uppercase; margin-bottom: 1mm; }' +
+    '.bet-row { display: flex; justify-content: space-between; align-items: center; font-size: 6.5pt; margin-bottom: 0.8mm; padding: 0.8mm 1.5mm; border-radius: 1mm; }' +
+    '.bet-win   { background: #e8f5eb; }' +
+    '.bet-place { background: #e8f0f8; }' +
+    '.bet-show  { background: #f3eaf8; }' +
+    '.bet-lose  { background: #f5f5f5; color: #999; }' +
+    '.bet-type  { font-weight: 700; width: 11mm; flex-shrink: 0; }' +
+    '.bet-team  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 1mm; }' +
+    '.bet-amt   { font-weight: 600; white-space: nowrap; }' +
+    '.bet-payout { font-weight: 700; color: #1a6e2e; white-space: nowrap; margin-left: 1mm; }' +
+    '.payout-box { margin-top: auto; border: 0.8pt solid #8B6914; border-radius: 1.5mm; padding: 1.5mm 2mm; }' +
+    '.payout-row { display: flex; justify-content: space-between; font-size: 7pt; }' +
+    '.payout-label { color: #555; }' +
+    '.payout-total { font-size: 10pt; font-weight: 900; color: #1a6e2e; }' +
+    '@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }';
+
+  const labelsHTML = winners.map(([bettorId, s]) => {
+    const bettor = bettorById(bettorId);
+    const name   = bettor ? bettor.name : bettorId;
+
+    // Get the ticket refs for this bettor's winning bets
+    const ticketRefs = [...new Set(s.bets.filter(b => b.ticketRef).map(b => b.ticketRef))];
+    const ticketDisplay = ticketRefs.length ? ticketRefs.join(', ') : '—';
+
+    // Build bet rows — winning bets highlighted, losing bets dimmed
+    const betRows = s.bets.map(b => {
+      const won    = b.payout > 0;
+      const cls    = won ? 'bet-' + b.type : 'bet-lose';
+      const tName  = teamName(b.teamId);
+      return '<div class="bet-row ' + cls + '">' +
+        '<span class="bet-type">' + b.type.toUpperCase() + '</span>' +
+        '<span class="bet-team">' + esc(tName) + '</span>' +
+        '<span class="bet-amt">' + fmt(b.amount) + '</span>' +
+        (won ? '<span class="bet-payout">→ ' + fmt(b.payout) + '</span>' : '<span style="color:#bbb;font-size:5.5pt;">✗</span>') +
+      '</div>';
+    }).join('');
+
+    const netGain = s.payout - s.wagered;
+
+    return '<div class="label">' +
+      '<div class="ev-name">' + esc(evName) + '</div>' +
+      '<div class="ticket-row">' +
+        '<span class="ticket-num">' + (ticketRefs.length === 1 ? ticketRefs[0] : ticketDisplay) + '</span>' +
+      '</div>' +
+      '<div class="bettor-name">' + esc(name) + '</div>' +
+      '<div class="results-row">🥇 ' + esc(p1Name) + ' &nbsp; 🥈 ' + esc(p2Name) + ' &nbsp; 🥉 ' + esc(p3Name) + '</div>' +
+      '<div class="bets-head">Bets placed &amp; results</div>' +
+      betRows +
+      '<div class="payout-box">' +
+        '<div class="payout-row"><span class="payout-label">Paid in</span><span>' + fmt(s.wagered) + '</span></div>' +
+        '<div class="payout-row"><span class="payout-label">Payout</span><span class="payout-total">' + fmt(s.payout) + '</span></div>' +
+        '<div class="payout-row"><span class="payout-label">Net</span><span style="font-weight:700;color:' + (netGain>=0?'#1a6e2e':'#c0392b') + ';">' + (netGain>=0?'+':'') + fmt(netGain) + '</span></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"/>' +
+    '<title>' + esc(evName) + ' — Cash Envelope Labels</title>' +
+    '<style>' + labelCSS + '</style>' +
+    '</head><body>' + labelsHTML + '</body></html>';
+
+  // Store and show print button — direct tap required by Safari
+  const btn = document.getElementById('label-print-btn');
+  if (btn) {
+    btn.style.display = '';
+    btn._labelHtml = html;
+    btn.textContent = '🖨 Print ' + winners.length + ' Label' + (winners.length>1?'s':'') + ' on QL-720NW';
+    btn.onclick = function() {
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:62mm;height:100mm;border:none;';
+      iframe.srcdoc = this._labelHtml;
+      document.body.appendChild(iframe);
+      iframe.onload = function() {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        setTimeout(function() {
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        }, 2000);
+      };
+    };
+    alert('✓ ' + winners.length + ' winner label' + (winners.length>1?'s':'') + ' ready.\n\nMake sure your Brother QL-720NW is connected and set to 62×100mm labels, then tap "Print Labels".');
+  }
 }
 
 // ─── Boot & event listeners ─────────────────────────────────────────────────
