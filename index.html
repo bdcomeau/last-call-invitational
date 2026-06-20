@@ -540,7 +540,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.1</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.3</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -689,6 +689,7 @@ function teamName(id) {
 // ─── Tab navigation ───────────────────────────────────────────────────────────
 function showTab(tab) {
   try {
+    syncRootFromState();  // always persist current event state on tab switch
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('#tabbar button').forEach(b => b.classList.remove('active'));
     const screen = document.getElementById('screen-' + tab);
@@ -728,6 +729,9 @@ function newTournament() {
   const nameEl = document.getElementById('new-event-name');
   const name = nameEl ? nameEl.value.trim() : '';
   if (!name) return;
+  // Save current event's state before switching to new one
+  syncRootFromState();
+  save();
   const ev = {
     id: uid(), name: name, createdAt: new Date().toISOString(), archived: false,
     handlePct: 3, payoutMode: 'simplified', teams: [], bets: [], bettors: [], placements: { p1:'', p2:'', p3:'' }, nextTicketNum: 1
@@ -770,6 +774,7 @@ function archiveEvent(id) {
   const ev = root.events.find(e => e.id === id);
   if (!ev) return;
   if (!confirm('Archive "' + ev.name + '"? It will become read-only.')) return;
+  syncRootFromState();  // save current state first
   ev.archived = true;
   save();
   renderEvents();
@@ -778,6 +783,7 @@ function archiveEvent(id) {
 function deleteEvent(id) {
   const ev = root.events.find(e => e.id === id);
   if (!ev) return;
+  syncRootFromState();  // flush current event to root before any deletion
   const teamCount  = (ev.teams || []).length;
   const betCount   = (ev.bets  || []).length;
   const pool       = (ev.bets  || []).reduce((s,b) => s + b.amount, 0);
@@ -805,16 +811,16 @@ function deleteEvent(id) {
 function viewArchivedResults(id) {
   const ev = root.events.find(e => e.id === id);
   if (!ev) return;
-  // Temporarily show results for this event
-  const saved = { teams: state.teams, bets: state.bets, placements: state.placements,
-                  tournamentName: state.tournamentName, handlePct: state.handlePct };
-  state.teams = ev.teams; state.bets = ev.bets; state.placements = ev.placements;
-  state.tournamentName = ev.name; state.handlePct = ev.handlePct;
-  renderResults();
-  // Restore
-  state.teams = saved.teams; state.bets = saved.bets; state.placements = saved.placements;
-  state.tournamentName = saved.tournamentName; state.handlePct = saved.handlePct;
+  // Save current active event before switching
+  syncRootFromState();
+  // Temporarily point at archived event to render its results
+  const activeId = root.activeEventId;
+  root.activeEventId = id;
+  syncStateFromRoot();
   showTab('results');
+  // Restore active event — do NOT save (archived event is read-only)
+  root.activeEventId = activeId;
+  syncStateFromRoot();
 }
 
 function renderEvents() {
