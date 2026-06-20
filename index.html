@@ -476,7 +476,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.1</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.2</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -1453,69 +1453,94 @@ function printBettingSheet() {
   const copies = parseInt(document.getElementById('sheet-copies')?.value || '1');
 
   const rows = teams.map((t,i) =>
-    '<tr style="background:' + (i%2===0?'#fff':'#f9f9f9') + ';">' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;font-size:12px;">' + esc(t.name) + '</td>' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;width:70px;"></td>' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;width:70px;"></td>' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;width:70px;"></td>' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;width:80px;background:#f0f0f0;"></td>' +
+    '<tr class="' + (i%2===0?'even':'odd') + '">' +
+      '<td class="team-cell">' + esc(t.name) + '</td>' +
+      '<td class="amt-cell"></td>' +
+      '<td class="amt-cell"></td>' +
+      '<td class="amt-cell"></td>' +
+      '<td class="total-cell"></td>' +
     '</tr>'
   ).join('');
 
   const fieldRow =
-    '<tr style="background:#fffbf0;border-top:2px solid #D4A843;">' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;font-size:12px;font-weight:700;color:#8F6E2A;">🌐 FIELD (×' + teams.length + ' teams — enter per-team amount)</td>' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;"></td>' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;"></td>' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;"></td>' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;background:#f0f0f0;"></td>' +
+    '<tr class="field-row">' +
+      '<td class="team-cell" style="font-weight:700;color:#8F6E2A;">🌐 FIELD &mdash; enter per-team $ (×' + teams.length + ' teams)</td>' +
+      '<td class="amt-cell"></td>' +
+      '<td class="amt-cell"></td>' +
+      '<td class="amt-cell"></td>' +
+      '<td class="total-cell"></td>' +
     '</tr>';
 
-  // One sheet template
   const sheet =
     '<div class="sheet">' +
-    '<h2>' + esc(evName) + '</h2>' +
-    '<div class="sub">Texas Scramble &middot; ' + year + ' &middot; Parimutuel Betting Sheet</div>' +
-    '<div class="bettor-label">Name of Bettor</div>' +
-    '<div class="bettor-box"></div>' +
-    '<table>' +
-      '<thead><tr>' +
-        '<th style="text-align:left;">TEAM NAME</th>' +
-        '<th style="color:#6EE89A;">WIN $</th>' +
-        '<th style="color:#7EC8E3;">PLACE $</th>' +
-        '<th style="color:#C9A0E8;">SHOW $</th>' +
-        '<th>TOTAL $</th>' +
-      '</tr></thead>' +
-      '<tbody>' + rows + fieldRow + '</tbody>' +
-      '<tfoot><tr class="total-row">' +
-        '<td style="padding:8px 10px;border:1px solid #ddd;">COLUMN TOTAL</td>' +
-        '<td style="padding:8px 10px;border:1px solid #ddd;"></td>' +
-        '<td style="padding:8px 10px;border:1px solid #ddd;"></td>' +
-        '<td style="padding:8px 10px;border:1px solid #ddd;"></td>' +
-        '<td style="padding:8px 10px;border:1px solid #ddd;background:#f0f0f0;font-weight:700;">GRAND TOTAL</td>' +
-      '</tr></tfoot>' +
-    '</table>' +
-    '<div class="ref">Last Call Invitational &middot; ' + year + ' &middot; Cash must match Grand Total</div>' +
+      '<div class="header-row">' +
+        '<div class="title-block">' +
+          '<div class="ev-name">' + esc(evName) + '</div>' +
+          '<div class="ev-sub">Texas Scramble &middot; ' + year + ' &middot; Parimutuel Betting</div>' +
+        '</div>' +
+        '<div class="bettor-block">' +
+          '<div class="bettor-label">Bettor Name</div>' +
+          '<div class="bettor-box"></div>' +
+        '</div>' +
+      '</div>' +
+      '<table>' +
+        '<thead><tr>' +
+          '<th class="th-team">TEAM NAME</th>' +
+          '<th class="th-win">WIN $</th>' +
+          '<th class="th-place">PLACE $</th>' +
+          '<th class="th-show">SHOW $</th>' +
+          '<th class="th-total">ROW TOTAL $</th>' +
+        '</tr></thead>' +
+        '<tbody>' + rows + fieldRow + '</tbody>' +
+        '<tfoot><tr class="col-total-row">' +
+          '<td class="team-cell" style="font-weight:700;font-size:9px;letter-spacing:1px;">COLUMN TOTALS</td>' +
+          '<td class="amt-cell"></td>' +
+          '<td class="amt-cell"></td>' +
+          '<td class="amt-cell"></td>' +
+          '<td class="total-cell" style="font-weight:700;">GRAND TOTAL</td>' +
+        '</tr></tfoot>' +
+      '</table>' +
+      '<div class="footer">Cash handed in must equal Grand Total &middot; ' + esc(evName) + ' &middot; ' + year + '</div>' +
     '</div>';
 
-  // Repeat for number of copies, page-break between each
   const allSheets = Array(copies).fill(sheet).join('<div style="page-break-after:always;"></div>');
 
   const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"/>' +
-    '<title>' + esc(evName) + ' — Betting Sheet</title>' +
+    '<title>' + esc(evName) + ' Betting Sheet</title>' +
     '<style>' +
-      'body{font-family:Arial,sans-serif;margin:0;font-size:13px;color:#000;}' +
-      '.sheet{padding:20px;max-width:720px;margin:0 auto;}' +
-      'h2{margin:0 0 2px;font-size:18px;}' +
-      '.sub{color:#555;font-size:11px;margin-bottom:12px;}' +
-      '.bettor-box{border:1px solid #999;border-radius:4px;padding:8px 12px;margin-bottom:14px;min-height:32px;}' +
-      '.bettor-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}' +
-      'table{width:100%;border-collapse:collapse;margin-bottom:8px;}' +
-      'th{background:#1E2E23;color:#D4A843;padding:7px 10px;font-size:11px;letter-spacing:1px;border:1px solid #999;}' +
-      'td{font-size:12px;}' +
-      '.total-row td{background:#f5f5f5;font-weight:700;border-top:2px solid #333;border:1px solid #ddd;}' +
-      '.ref{font-size:10px;color:#999;text-align:right;margin-top:6px;}' +
-      '@media print{body{margin:0;} .sheet{padding:12px;}}' +
+      '@page { size: letter portrait; margin: 0.4in 0.4in 0.4in 0.4in; }' +
+      'body { font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #000; margin: 0; }' +
+      '.sheet { width: 100%; }' +
+
+      /* Header row with title left, bettor box right */
+      '.header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; gap: 12px; }' +
+      '.title-block { flex: 1; }' +
+      '.ev-name { font-size: 16px; font-weight: 700; margin: 0 0 1px; line-height: 1.2; }' +
+      '.ev-sub { font-size: 8px; color: #555; }' +
+      '.bettor-block { flex: 1; }' +
+      '.bettor-label { font-size: 8px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }' +
+      '.bettor-box { border: 1px solid #999; border-radius: 3px; height: 22px; }' +
+
+      /* Table */
+      'table { width: 100%; border-collapse: collapse; }' +
+      'th { background: #1E2E23; color: #D4A843; font-size: 8px; letter-spacing: 0.5px; border: 1px solid #555; padding: 3px 4px; text-align: center; }' +
+      '.th-team { text-align: left; width: auto; }' +
+      '.th-win { color: #6EE89A; width: 60px; }' +
+      '.th-place { color: #7EC8E3; width: 60px; }' +
+      '.th-show { color: #C9A0E8; width: 60px; }' +
+      '.th-total { width: 70px; }' +
+
+      '.team-cell { padding: 2px 5px; border: 1px solid #ddd; font-size: 9px; text-align: left; }' +
+      '.amt-cell  { padding: 2px 4px; border: 1px solid #ddd; width: 60px; }' +
+      '.total-cell{ padding: 2px 4px; border: 1px solid #ddd; width: 70px; background: #f5f5f5; }' +
+
+      'tr.even { background: #fff; }' +
+      'tr.odd  { background: #f9f9f9; }' +
+      'tr.field-row { background: #fffbf0; border-top: 1.5px solid #D4A843; }' +
+      'tr.col-total-row td { background: #efefef; border-top: 2px solid #333; border: 1px solid #bbb; padding: 3px 5px; }' +
+
+      '.footer { font-size: 7px; color: #999; text-align: right; margin-top: 4px; }' +
+      '@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }' +
     '</style></head><body>' + allSheets + '</body></html>';
 
   const styleId = 'sheet-print-style';
