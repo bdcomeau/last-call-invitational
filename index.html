@@ -476,7 +476,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.4</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.5</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -1149,68 +1149,115 @@ function printTicket() {
   const bets   = state.bets.filter(b => b.bettorId === bettorId);
   if (!bets.length) { alert('No bets found for this bettor.'); return; }
 
-  // Group by comboGroupId first, then show remaining singles
-  const seen = new Set();
-  const groups = [];
+  // Group bets by ticketRef first, then by comboGroupId within each ticket
+  const ticketGroups = {};
+  const noRef = [];
   bets.forEach(b => {
-    if (b.comboGroupId) {
-      if (!seen.has(b.comboGroupId)) {
-        seen.add(b.comboGroupId);
-        const legs = bets.filter(x => x.comboGroupId === b.comboGroupId);
-        legs.forEach(x => seen.add(x.id));
-        const typeLabel = b.combo === 'win-place' ? 'WIN + PLACE' :
-                          b.combo === 'win-place-show' ? 'WIN + PLACE + SHOW' :
-                          b.combo ? b.combo.toUpperCase() : legs.map(x=>x.type.toUpperCase()).join(' + ');
-        groups.push({ teamId:b.teamId, typeLabel, unitAmount: b.unitAmount||b.amount, total: legs.reduce((s,x)=>s+x.amount,0) });
-      }
-    } else if (!seen.has(b.id)) {
-      seen.add(b.id);
-      groups.push({ teamId:b.teamId, typeLabel:b.type.toUpperCase(), unitAmount:b.unitAmount||b.amount, total:b.amount });
+    if (b.ticketRef) {
+      if (!ticketGroups[b.ticketRef]) ticketGroups[b.ticketRef] = [];
+      ticketGroups[b.ticketRef].push(b);
+    } else {
+      noRef.push(b);
     }
   });
 
-  const totalWagered = groups.reduce((s,g) => s + g.total, 0);
+  // Collapse combo legs within a group into single display rows
+  function collapseToRows(betList) {
+    const seen = new Set();
+    const rows = [];
+    betList.forEach(b => {
+      if (b.comboGroupId) {
+        if (!seen.has(b.comboGroupId)) {
+          seen.add(b.comboGroupId);
+          const legs = betList.filter(x => x.comboGroupId === b.comboGroupId);
+          legs.forEach(x => seen.add(x.id));
+          const typeLabel = b.combo === 'win-place' ? 'WIN + PLACE' :
+                            b.combo === 'win-place-show' ? 'WIN + PLACE + SHOW' :
+                            legs.map(x => x.type.toUpperCase()).join(' + ');
+          rows.push({ teamId: b.teamId, typeLabel, unitAmount: b.unitAmount||b.amount, total: legs.reduce((s,x)=>s+x.amount,0) });
+        }
+      } else if (!seen.has(b.id)) {
+        seen.add(b.id);
+        rows.push({ teamId: b.teamId, typeLabel: b.type.toUpperCase(), unitAmount: b.unitAmount||b.amount, total: b.amount });
+      }
+    });
+    return rows;
+  }
+
+  function renderRows(betList) {
+    return collapseToRows(betList).map(g => {
+      const amtDisplay = g.total !== (g.unitAmount||g.total)
+        ? fmt(g.total) + ' (' + fmt(g.unitAmount) + ' ea)'
+        : fmt(g.total);
+      return '<tr>' +
+        '<td style="padding:6px 10px;border-bottom:1px solid #eee;">' + esc(teamName(g.teamId)) + '</td>' +
+        '<td style="padding:6px 10px;border-bottom:1px solid #eee;font-weight:700;">' + g.typeLabel + '</td>' +
+        '<td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;">' + amtDisplay + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  const totalWagered = bets.reduce((s,b) => s + b.amount, 0);
   const now = new Date().toLocaleString('en-CA', { dateStyle:'medium', timeStyle:'short' });
 
-  const rows = groups.map(g => {
-    const amountDisplay = g.total !== g.unitAmount
-      ? fmt(g.total) + ' (' + fmt(g.unitAmount) + ' ea)'
-      : fmt(g.total);
-    return '<tr>' +
-      '<td style="padding:8px 10px;border-bottom:1px solid #ddd;">' + esc(teamName(g.teamId)) + '</td>' +
-      '<td style="padding:8px 10px;border-bottom:1px solid #ddd;font-weight:700;">' + g.typeLabel + '</td>' +
-      '<td style="padding:8px 10px;border-bottom:1px solid #ddd;text-align:right;">' + amountDisplay + '</td>' +
-    '</tr>';
-  }).join('');
+  // Build ticket sections — one per ticketRef, then ungrouped
+  let ticketSections = '';
+  Object.entries(ticketGroups).forEach(function(entry) {
+    const ref = entry[0], tBets = entry[1];
+    const tTotal = tBets.reduce((s,b) => s + b.amount, 0);
+    ticketSections +=
+      '<div style="margin-bottom:14px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;background:#f9f6ee;border:1px solid #d4a843;border-radius:6px;padding:6px 10px;margin-bottom:4px;">' +
+          '<span style="font-size:13px;font-weight:700;color:#8F6E2A;">🎟 Ticket ' + ref + '</span>' +
+          '<span style="font-size:12px;font-weight:700;">' + fmt(tTotal) + '</span>' +
+        '</div>' +
+        '<table style="width:100%;border-collapse:collapse;">' +
+          '<thead><tr style="background:#1E2E23;color:#D4A843;">' +
+            '<th style="padding:5px 10px;text-align:left;font-size:10px;">TEAM</th>' +
+            '<th style="padding:5px 10px;text-align:left;font-size:10px;">TYPE</th>' +
+            '<th style="padding:5px 10px;text-align:right;font-size:10px;">AMOUNT</th>' +
+          '</tr></thead>' +
+          '<tbody>' + renderRows(tBets) + '</tbody>' +
+        '</table>' +
+      '</div>';
+  });
 
-  // Build ticket HTML as an in-page overlay — no popup window needed
+  // Ungrouped bets (entered via old wagers screen)
+  if (noRef.length) {
+    ticketSections +=
+      '<div style="margin-bottom:14px;">' +
+        '<div style="font-size:11px;color:#888;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid #eee;">Other bets</div>' +
+        '<table style="width:100%;border-collapse:collapse;">' +
+          '<thead><tr style="background:#1E2E23;color:#D4A843;">' +
+            '<th style="padding:5px 10px;text-align:left;font-size:10px;">TEAM</th>' +
+            '<th style="padding:5px 10px;text-align:left;font-size:10px;">TYPE</th>' +
+            '<th style="padding:5px 10px;text-align:right;font-size:10px;">AMOUNT</th>' +
+          '</tr></thead>' +
+          '<tbody>' + renderRows(noRef) + '</tbody>' +
+        '</table>' +
+      '</div>';
+  }
+
   const ticketHTML =
-    '<div style="font-family:Arial,sans-serif;max-width:420px;margin:0 auto;color:#111;font-size:14px;">' +
-    '<h2 style="font-size:20px;margin:0 0 2px;">' + esc(state.tournamentName) + '</h2>' +
-    '<div style="color:#666;font-size:11px;margin-bottom:14px;">OFFICIAL BETTING TICKET &middot; ' + now + '</div>' +
-    '<div style="background:#f9f6ee;border:1px solid #d4a843;border-radius:8px;padding:10px 12px;margin-bottom:12px;">' +
-      '<div style="font-size:10px;color:#8F6E2A;font-weight:700;letter-spacing:1px;">BETTOR</div>' +
-      '<div style="font-size:17px;font-weight:700;">' + esc(bettor.name) + '</div>' +
-      (bettor.email ? '<div style="font-size:11px;color:#555;">' + esc(bettor.email) + '</div>' : '') +
-      (bettor.phone ? '<div style="font-size:11px;color:#555;">' + esc(bettor.phone) + '</div>' : '') +
-    '</div>' +
-    '<table style="width:100%;border-collapse:collapse;">' +
-      '<thead><tr style="background:#1E2E23;color:#D4A843;">' +
-        '<th style="padding:7px 10px;text-align:left;font-size:11px;">TEAM</th>' +
-        '<th style="padding:7px 10px;text-align:left;font-size:11px;">TYPE</th>' +
-        '<th style="padding:7px 10px;text-align:right;font-size:11px;">AMOUNT</th>' +
-      '</tr></thead>' +
-      '<tbody>' + rows + '</tbody>' +
-      '<tfoot><tr style="font-weight:700;border-top:2px solid #111;">' +
-        '<td colspan="2" style="padding:8px 10px;">TOTAL COLLECTED</td>' +
-        '<td style="padding:8px 10px;text-align:right;">' + fmt(totalWagered) + '</td>' +
-      '</tr></tfoot>' +
-    '</table>' +
-    '<div style="margin-top:16px;font-size:10px;color:#888;text-align:center;border-top:1px solid #ddd;padding-top:10px;">Good luck! &middot; ' + esc(state.tournamentName) + ' &middot; Texas Scramble</div>' +
+    '<div style="font-family:Arial,sans-serif;max-width:440px;margin:0 auto;color:#111;font-size:13px;">' +
+      '<h2 style="font-size:19px;margin:0 0 2px;">' + esc(state.tournamentName) + '</h2>' +
+      '<div style="color:#666;font-size:10px;margin-bottom:12px;">OFFICIAL BETTING RECEIPT &middot; ' + now + '</div>' +
+      '<div style="background:#f0f7f0;border:1px solid #2B4033;border-radius:6px;padding:8px 12px;margin-bottom:14px;">' +
+        '<div style="font-size:9px;color:#555;font-weight:700;letter-spacing:1px;">BETTOR</div>' +
+        '<div style="font-size:16px;font-weight:700;">' + esc(bettor.name) + '</div>' +
+        (bettor.email ? '<div style="font-size:11px;color:#555;">' + esc(bettor.email) + '</div>' : '') +
+        (bettor.phone ? '<div style="font-size:11px;color:#555;">' + esc(bettor.phone) + '</div>' : '') +
+      '</div>' +
+      ticketSections +
+      '<div style="border-top:2px solid #111;padding:8px 10px;display:flex;justify-content:space-between;font-weight:700;font-size:14px;">' +
+        '<span>TOTAL COLLECTED</span><span>' + fmt(totalWagered) + '</span>' +
+      '</div>' +
+      '<div style="margin-top:12px;font-size:9px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:8px;">' +
+        'Good luck! &middot; ' + esc(state.tournamentName) + ' &middot; Texas Scramble' +
+      '</div>' +
     '</div>';
 
-  // Show as full-screen overlay with close + print buttons
-  const overlay = document.getElementById('ticket-overlay');
+  const overlay     = document.getElementById('ticket-overlay');
   const overlayBody = document.getElementById('ticket-overlay-body');
   overlayBody.innerHTML = ticketHTML;
   overlay.style.display = 'flex';
@@ -1239,7 +1286,8 @@ function printTicketOverlay() {
     document.body.appendChild(wrapper);
   }
   wrapper.innerHTML = document.getElementById('ticket-overlay-body').innerHTML;
-  window.print();
+  // Delay to let DOM update before printing — fixes blank page bug on iOS
+  setTimeout(function() { window.print(); }, 400);
 }
 
 // ─── ENTRY SHEET ─────────────────────────────────────────────────────────────
@@ -1570,8 +1618,7 @@ function printBettingSheet() {
   iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;';
   iframe.srcdoc = html;
   wrapper.appendChild(iframe);
-  iframe.onload = function() { iframe.contentWindow.print(); };
-  window.print();
+  iframe.onload = function() { setTimeout(function(){ iframe.contentWindow.print(); }, 400); };
 }
 
 // ─── PLACEMENTS ───────────────────────────────────────────────────────────────
