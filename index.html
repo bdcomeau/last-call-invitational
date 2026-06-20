@@ -416,13 +416,13 @@
         <div class="scroll-list" id="wagers-list" style="max-height:440px;"></div>
         <!-- Cash envelope labels -->
         <div class="card" style="border-color:#D4A84344;">
-          <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:8px;">🏷 CASH ENVELOPE LABELS</div>
+          <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:8px;">🏆 WINNER PAYOUT SUMMARY</div>
           <div style="font-size:12px;color:#7A9E89;margin-bottom:10px;line-height:1.5;">
-            Prints one label per winning bettor for Brother QL-720NW (62×100mm).<br/>
-            Each label shows ticket number, bets placed, winning bets highlighted, and payout amount.
+            Prints one winner summary per bettor — letter size, one per page.<br/>
+            Shows their bets, which ones paid out, and total winnings.
           </div>
-          <button class="btn btn-primary" onclick="prepareCashLabels()" style="width:100%;">🏷 Prepare Cash Envelope Labels</button>
-          <button id="label-print-btn" class="btn btn-primary" style="display:none;width:100%;margin-top:8px;font-size:15px;padding:14px;">🖨 Print Labels on QL-720NW</button>
+          <button class="btn btn-primary" onclick="prepareCashLabels()" style="width:100%;">🏆 Prepare Winner Summaries</button>
+          <button id="label-print-btn" class="btn btn-primary" style="display:none;width:100%;margin-top:8px;font-size:15px;padding:14px;">🖨 Open & Print Winner Summaries</button>
         </div>
       </div>
     </div>
@@ -499,7 +499,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v6.1</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v6.2</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -892,9 +892,9 @@ function initResetSlider() {
   document.addEventListener('touchend', onEnd);
 }
 
-// ─── CASH ENVELOPE LABELS ────────────────────────────────────────────────────
-// Generates 62mm × 100mm labels for Brother QL-720NW
-// One label per winning bettor, printed after results are set.
+// ─── WINNER PAYOUT SUMMARIES ─────────────────────────────────────────────────
+// Generates a letter-size winner summary page per winning bettor.
+// One bettor per page, clean and readable, suitable for handing out with cash.
 
 function prepareCashLabels() {
   const { p1, p2, p3 } = state.placements;
@@ -903,9 +903,9 @@ function prepareCashLabels() {
     return;
   }
 
-  const { betResults, totalPayout } = calcPayouts();
+  const { betResults } = calcPayouts();
 
-  // Group by bettor, only include bettors with at least one winning payout
+  // Group by bettor — only winners
   const bettorMap = {};
   betResults.forEach(b => {
     if (!bettorMap[b.bettorId]) bettorMap[b.bettorId] = { wagered:0, payout:0, bets:[] };
@@ -915,8 +915,8 @@ function prepareCashLabels() {
   });
 
   const winners = Object.entries(bettorMap)
-    .filter(([,s]) => s.payout > 0)
-    .sort((a,b) => b[1].payout - a[1].payout);
+    .filter(function(e) { return e[1].payout > 0; })
+    .sort(function(a,b) { return b[1].payout - a[1].payout; });
 
   if (!winners.length) {
     alert('No winning bets found. Check that placements are set and bets exist.');
@@ -926,119 +926,139 @@ function prepareCashLabels() {
   const ev     = activeEvent();
   const evName = ev ? ev.name : (state.tournamentName || 'Last Call Invitational');
   const p1Name = teamName(p1), p2Name = teamName(p2), p3Name = teamName(p3);
-  const typeColors = { win:'#2a7a3b', place:'#1a5c8a', show:'#6a3a8a' };
+  const now    = new Date().toLocaleString('en-CA', { dateStyle:'long', timeStyle:'short' });
 
-  // One label per winning bettor
-  // 62mm × 100mm ≈ 234px × 378px at 96dpi, but we use mm units for accuracy
-  const labelCSS =
-    // Use letter page — let the QL driver handle label feeding
-    // Each label is drawn as an exact 62×100mm box on the page
-    '@page { size: letter portrait; margin: 0.25in; }' +
-    'body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background: #fff; color: #000; font-size: 7pt; }' +
-    '.label { width: 62mm; height: 100mm; padding: 3mm 3.5mm; box-sizing: border-box;' +
-      'border: 1pt solid #ccc; border-radius: 2mm; overflow: hidden;' +
-      'display: inline-flex; flex-direction: column; margin: 3mm;' +
-      'page-break-inside: avoid; vertical-align: top; }' +
-    '.ev-name { font-size: 7pt; font-weight: 700; letter-spacing: 0.3pt;' +
-      'border-bottom: 0.5pt solid #000; padding-bottom: 1.5mm; margin-bottom: 1.5mm;' +
-      'white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
-    '.ticket-num { font-size: 12pt; font-weight: 900; color: #8B6914; letter-spacing: 0.5pt; margin-bottom: 0.5mm; }' +
-    '.bettor-name { font-size: 8.5pt; font-weight: 700; margin-bottom: 1mm; }' +
-    '.results-row { font-size: 6pt; color: #333; margin-bottom: 1.5mm; padding-bottom: 1.5mm; border-bottom: 0.5pt solid #ccc; line-height: 1.4; }' +
-    '.bets-head { font-size: 5.5pt; font-weight: 700; letter-spacing: 0.5pt; color: #555; text-transform: uppercase; margin-bottom: 1mm; }' +
-    '.bet-row { display: flex; justify-content: space-between; align-items: center;' +
-      'font-size: 6.5pt; margin-bottom: 0.8mm; padding: 0.8mm 1.5mm; border-radius: 1mm; }' +
-    '.bet-win   { background: #e8f5eb; }' +
-    '.bet-place { background: #e8f0f8; }' +
-    '.bet-show  { background: #f3eaf8; }' +
-    '.bet-lose  { background: #f5f5f5; color: #aaa; }' +
-    '.bet-type  { font-weight: 700; width: 11mm; flex-shrink: 0; }' +
-    '.bet-team  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 1mm; }' +
-    '.bet-amt   { font-weight: 600; white-space: nowrap; }' +
-    '.bet-payout { font-weight: 700; color: #1a6e2e; white-space: nowrap; margin-left: 1mm; }' +
-    '.payout-box { margin-top: auto; border: 0.8pt solid #8B6914; border-radius: 1.5mm; padding: 1.5mm 2mm; }' +
-    '.payout-row { display: flex; justify-content: space-between; font-size: 6.5pt; margin-bottom: 0.5mm; }' +
-    '.payout-label { color: #555; }' +
-    '.payout-total { font-size: 9.5pt; font-weight: 900; color: #1a6e2e; }' +
-    '@media print {' +
-      'body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }' +
-      '.label { border: 1pt solid #999; }' +
-    '}';
+  const css =
+    '@page { size: letter portrait; margin: 0.6in 0.65in; }' +
+    'body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; color: #111; margin: 0; background: #fff; }' +
+    '.page { page-break-after: always; }' +
+    '.page:last-child { page-break-after: avoid; }' +
+    '.header { border-bottom: 2pt solid #1E2E23; padding-bottom: 10pt; margin-bottom: 14pt; }' +
+    '.ev-name { font-size: 18pt; font-weight: 700; color: #1E2E23; margin: 0 0 2pt; }' +
+    '.ev-sub { font-size: 9pt; color: #666; }' +
+    '.winner-box { background: #f9f6ee; border: 1.5pt solid #D4A843; border-radius: 6pt; padding: 12pt 14pt; margin-bottom: 14pt; }' +
+    '.winner-name { font-size: 20pt; font-weight: 700; margin: 0 0 2pt; }' +
+    '.ticket-ref { font-size: 9pt; color: #8B6914; font-weight: 700; letter-spacing: 0.5pt; }' +
+    '.standings { font-size: 9pt; color: #444; margin-bottom: 14pt; padding: 8pt 10pt; background: #f5f5f5; border-radius: 4pt; }' +
+    '.standings strong { color: #1E2E23; }' +
+    '.bets-table { width: 100%; border-collapse: collapse; margin-bottom: 14pt; }' +
+    '.bets-table th { background: #1E2E23; color: #D4A843; font-size: 8.5pt; padding: 5pt 8pt; text-align: left; letter-spacing: 0.5pt; }' +
+    '.bets-table td { font-size: 10pt; padding: 5pt 8pt; border-bottom: 0.5pt solid #e0e0e0; vertical-align: middle; }' +
+    '.bets-table tr.win-row   td { background: #eef8f0; }' +
+    '.bets-table tr.place-row td { background: #eef2f9; }' +
+    '.bets-table tr.show-row  td { background: #f5eef9; }' +
+    '.bets-table tr.lose-row  td { color: #aaa; background: #fafafa; }' +
+    '.type-win   { color: #1a6e2e; font-weight: 700; }' +
+    '.type-place { color: #1a4a8a; font-weight: 700; }' +
+    '.type-show  { color: #6a1a8a; font-weight: 700; }' +
+    '.type-lose  { color: #ccc; }' +
+    '.payout-cell { font-weight: 700; color: #1a6e2e; }' +
+    '.lose-cell   { color: #ccc; font-size: 9pt; }' +
+    '.totals { border-top: 2pt solid #1E2E23; padding-top: 10pt; }' +
+    '.totals-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8pt; }' +
+    '.total-cell { text-align: center; padding: 8pt; border: 1pt solid #ddd; border-radius: 4pt; }' +
+    '.total-label { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 0.5pt; margin-bottom: 3pt; }' +
+    '.total-value { font-size: 16pt; font-weight: 700; }' +
+    '.total-wagered { color: #333; }' +
+    '.total-payout  { color: #1a6e2e; }' +
+    '.total-net     { color: #1a6e2e; }' +
+    '.footer { margin-top: 16pt; font-size: 8pt; color: #999; text-align: center; border-top: 0.5pt solid #ddd; padding-top: 8pt; }' +
+    '@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }';
 
-  const labelsHTML = winners.map(([bettorId, s]) => {
-    const bettor = bettorById(bettorId);
-    const name   = bettor ? bettor.name : bettorId;
+  const pages = winners.map(function(entry) {
+    const bettorId = entry[0], s = entry[1];
+    const bettor   = bettorById(bettorId);
+    const name     = bettor ? bettor.name : bettorId;
+    const contact  = [bettor && bettor.email ? bettor.email : '', bettor && bettor.phone ? bettor.phone : ''].filter(Boolean).join(' &middot; ');
+    const ticketRefs = [...new Set(s.bets.filter(function(b){return b.ticketRef;}).map(function(b){return b.ticketRef;}))];
+    const netGain  = s.payout - s.wagered;
 
-    // Get the ticket refs for this bettor's winning bets
-    const ticketRefs = [...new Set(s.bets.filter(b => b.ticketRef).map(b => b.ticketRef))];
-    const ticketDisplay = ticketRefs.length ? ticketRefs.join(', ') : '—';
+    const typeClass = { win: 'win-row', place: 'place-row', show: 'show-row' };
+    const typeLabel = { win: 'WIN', place: 'PLACE', show: 'SHOW' };
+    const typeCls   = { win: 'type-win', place: 'type-place', show: 'type-show' };
 
-    // Build bet rows — winning bets highlighted, losing bets dimmed
-    const betRows = s.bets.map(b => {
-      const won    = b.payout > 0;
-      const cls    = won ? 'bet-' + b.type : 'bet-lose';
-      const tName  = teamName(b.teamId);
-      return '<div class="bet-row ' + cls + '">' +
-        '<span class="bet-type">' + b.type.toUpperCase() + '</span>' +
-        '<span class="bet-team">' + esc(tName) + '</span>' +
-        '<span class="bet-amt">' + fmt(b.amount) + '</span>' +
-        (won ? '<span class="bet-payout">→ ' + fmt(b.payout) + '</span>' : '<span style="color:#bbb;font-size:5.5pt;">✗</span>') +
-      '</div>';
+    const betRows = s.bets.map(function(b) {
+      const won = b.payout > 0;
+      const rowCls = won ? typeClass[b.type] : 'lose-row';
+      const typeCl = won ? typeCls[b.type] : 'type-lose';
+      return '<tr class="' + rowCls + '">' +
+        '<td><span class="' + typeCl + '">' + (won ? typeLabel[b.type] : typeLabel[b.type]) + '</span></td>' +
+        '<td>' + esc(teamName(b.teamId)) + (b.ticketRef ? ' <span style="font-size:8pt;color:#888;">' + b.ticketRef + '</span>' : '') + '</td>' +
+        '<td style="text-align:right;">' + fmt(b.amount) + '</td>' +
+        '<td style="text-align:right;">' +
+          (won ? '<span class="payout-cell">' + fmt(b.payout) + '</span>' : '<span class="lose-cell">— no win</span>') +
+        '</td>' +
+      '</tr>';
     }).join('');
 
-    const netGain = s.payout - s.wagered;
+    return '<div class="page">' +
+      '<div class="header">' +
+        '<div class="ev-name">' + esc(evName) + '</div>' +
+        '<div class="ev-sub">Winner Payout Summary &middot; ' + now + '</div>' +
+      '</div>' +
 
-    return '<div class="label">' +
-      '<div class="ev-name">' + esc(evName) + '</div>' +
-      '<div class="ticket-row">' +
-        '<span class="ticket-num">' + (ticketRefs.length === 1 ? ticketRefs[0] : ticketDisplay) + '</span>' +
+      '<div class="winner-box">' +
+        '<div class="winner-name">' + esc(name) + '</div>' +
+        (contact ? '<div style="font-size:9pt;color:#666;margin-bottom:4pt;">' + contact + '</div>' : '') +
+        (ticketRefs.length ? '<div class="ticket-ref">Ticket' + (ticketRefs.length>1?'s':'') + ': ' + ticketRefs.join(', ') + '</div>' : '') +
       '</div>' +
-      '<div class="bettor-name">' + esc(name) + '</div>' +
-      '<div class="results-row">🥇 ' + esc(p1Name) + ' &nbsp; 🥈 ' + esc(p2Name) + ' &nbsp; 🥉 ' + esc(p3Name) + '</div>' +
-      '<div class="bets-head">Bets placed &amp; results</div>' +
-      betRows +
-      '<div class="payout-box">' +
-        '<div class="payout-row"><span class="payout-label">Paid in</span><span>' + fmt(s.wagered) + '</span></div>' +
-        '<div class="payout-row"><span class="payout-label">Payout</span><span class="payout-total">' + fmt(s.payout) + '</span></div>' +
-        '<div class="payout-row"><span class="payout-label">Net</span><span style="font-weight:700;color:' + (netGain>=0?'#1a6e2e':'#c0392b') + ';">' + (netGain>=0?'+':'') + fmt(netGain) + '</span></div>' +
+
+      '<div class="standings">' +
+        '<strong>Final Results:</strong>&nbsp;&nbsp;' +
+        '🥇 ' + esc(p1Name) + '&nbsp;&nbsp;&nbsp;' +
+        '🥈 ' + esc(p2Name) + '&nbsp;&nbsp;&nbsp;' +
+        '🥉 ' + esc(p3Name) +
       '</div>' +
+
+      '<table class="bets-table">' +
+        '<thead><tr>' +
+          '<th style="width:60pt;">TYPE</th>' +
+          '<th>TEAM BET ON</th>' +
+          '<th style="text-align:right;width:55pt;">BET</th>' +
+          '<th style="text-align:right;width:65pt;">PAYOUT</th>' +
+        '</tr></thead>' +
+        '<tbody>' + betRows + '</tbody>' +
+      '</table>' +
+
+      '<div class="totals">' +
+        '<div class="totals-grid">' +
+          '<div class="total-cell"><div class="total-label">Total Bet</div><div class="total-value total-wagered">' + fmt(s.wagered) + '</div></div>' +
+          '<div class="total-cell"><div class="total-label">Total Payout</div><div class="total-value total-payout">' + fmt(s.payout) + '</div></div>' +
+          '<div class="total-cell"><div class="total-label">Net Winnings</div><div class="total-value total-net">+' + fmt(netGain) + '</div></div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="footer">' + esc(evName) + ' &middot; Texas Scramble &middot; Parimutuel Betting</div>' +
     '</div>';
   }).join('');
 
   const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"/>' +
-    '<title>' + esc(evName) + ' — Cash Envelope Labels</title>' +
-    '<style>' + labelCSS + '</style>' +
+    '<title>' + esc(evName) + ' — Winner Summaries</title>' +
+    '<style>' + css + '</style>' +
     '</head><body>' +
-    '<div style="font-family:Arial,sans-serif;padding:8px 12px;background:#1E2E23;color:#D4A843;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:6px;">' +
-      '<span style="font-size:13px;font-weight:700;">' + esc(evName) + ' — ' + winners.length + ' Winner Label' + (winners.length>1?'s':'') + '</span>' +
-      '<button onclick="window.print()" style="background:#D4A843;color:#111;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Print Now</button>' +
+    '<div style="font-family:Arial,sans-serif;padding:8px 14px;background:#1E2E23;color:#D4A843;' +
+      'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;' +
+      'border-radius:6px;position:sticky;top:0;z-index:99;" class="no-print">' +
+      '<span style="font-size:13px;font-weight:700;">' + winners.length + ' Winner Summary Sheet' + (winners.length>1?'s':'') + ' — ' + esc(evName) + '</span>' +
+      '<button onclick="window.print()" style="background:#D4A843;color:#111;border:none;border-radius:6px;' +
+        'padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;">🖨 Print All</button>' +
     '</div>' +
-    labelsHTML + '</body></html>';
+    '<style>.no-print{} @media print{.no-print{display:none!important;}}</style>' +
+    pages + '</body></html>';
 
-  // Store and show print button — direct tap required by Safari
-  // Store label HTML and show the print button
-  // User taps the button — direct user gesture required by Safari
   const btn = document.getElementById('label-print-btn');
   if (btn) {
     btn.style.display = '';
-    btn.textContent = '🖨 Open & Print ' + winners.length + ' Label' + (winners.length>1?'s':'');
+    btn.textContent = '🖨 Open & Print ' + winners.length + ' Winner Summary Sheet' + (winners.length>1?'s':'');
     btn.onclick = function() {
-      // Write HTML into a blob URL — avoids srcdoc and iframe issues entirely
       const blob = new Blob([html], { type: 'text/html' });
       const url  = URL.createObjectURL(blob);
       const win  = window.open(url, '_blank');
       if (!win) {
-        // Popup blocked — fallback: write directly to new tab
         const tab = window.open('about:blank', '_blank');
-        if (tab) {
-          tab.document.open();
-          tab.document.write(html);
-          tab.document.close();
-        } else {
-          alert('Please allow popups for this site, then try again.');
-        }
+        if (tab) { tab.document.open(); tab.document.write(html); tab.document.close(); }
+        else { alert('Please allow popups for this site, then try again.'); }
       }
-      // Revoke blob URL after a moment
       setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
     };
   }
