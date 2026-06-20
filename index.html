@@ -229,6 +229,31 @@
         </div>
       </div>
       <div class="card">
+        <div style="font-size:12px;color:#7A9E89;margin-bottom:10px;letter-spacing:1px;">PAYOUT CALCULATION MODEL</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#162219;border-radius:8px;cursor:pointer;" id="mode-label-simplified">
+            <input type="radio" id="mode-simplified" name="payoutMode" value="simplified" style="margin-top:2px;accent-color:#D4A843;" onchange="setPayoutMode('simplified')" />
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#EDE8DC;">Simplified (Current)</div>
+              <div style="font-size:10px;color:#7A9E89;margin-top:2px;line-height:1.5;">
+                PLACE pool split 50/50 between 1st and 2nd place finishers' bettors.<br/>
+                SHOW pool split into thirds between 1st, 2nd and 3rd. Good for small tournaments.
+              </div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#162219;border-radius:8px;cursor:pointer;" id="mode-label-racetrack">
+            <input type="radio" id="mode-racetrack" name="payoutMode" value="racetrack" style="margin-top:2px;accent-color:#D4A843;" onchange="setPayoutMode('racetrack')" />
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#EDE8DC;">True Racetrack</div>
+              <div style="font-size:10px;color:#7A9E89;margin-top:2px;line-height:1.5;">
+                PLACE pool distributed to ALL bettors who picked 1st or 2nd finisher, proportional to amount wagered.<br/>
+                SHOW pool distributed to ALL bettors who picked 1st, 2nd or 3rd finisher, proportional to amount wagered.
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div class="card">
         <div class="section-head">Add Teams</div>
         <div style="display:flex;flex-direction:column;gap:10px;">
           <div class="field"><label>Team Name</label><input type="text" id="new-team-name" placeholder="Eagle Chasers" /></div>
@@ -515,7 +540,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v6.3</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v6.4</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -573,6 +598,7 @@ let root = {
 let state = {
   tournamentName: 'Last Call Invitational',
   handlePct: 3,
+  payoutMode: 'simplified',
   teams: [],
   bettors: [],
   bets: [],
@@ -588,6 +614,7 @@ function syncStateFromRoot() {
   if (ev) {
     state.tournamentName = ev.name || '';
     state.handlePct      = ev.handlePct || 3;
+    state.payoutMode     = ev.payoutMode || 'simplified';
     state.teams          = ev.teams || [];
     state.bets           = ev.bets || [];
     state.placements     = ev.placements || { p1:'', p2:'', p3:'' };
@@ -602,6 +629,7 @@ function syncRootFromState() {
   if (ev) {
     ev.name       = state.tournamentName;
     ev.handlePct  = state.handlePct;
+    ev.payoutMode = state.payoutMode || 'simplified';
     ev.teams      = state.teams;
     ev.bets       = state.bets;
     ev.placements = state.placements;
@@ -632,7 +660,7 @@ function load() {
       const migEvent = {
         id: uid(), name: oldState.tournamentName || 'Last Call Invitational',
         createdAt: new Date().toISOString(), archived: false,
-        handlePct: oldState.handlePct || 3,
+        handlePct: oldState.handlePct || 3, payoutMode: 'simplified',
         teams: oldState.teams || [], bets: oldState.bets || [],
         placements: oldState.placements || { p1:'', p2:'', p3:'' }, nextTicketNum: 1
       };
@@ -702,7 +730,7 @@ function newTournament() {
   if (!name) return;
   const ev = {
     id: uid(), name: name, createdAt: new Date().toISOString(), archived: false,
-    handlePct: 3, teams: [], bets: [], placements: { p1:'', p2:'', p3:'' }, nextTicketNum: 1
+    handlePct: 3, payoutMode: 'simplified', teams: [], bets: [], placements: { p1:'', p2:'', p3:'' }, nextTicketNum: 1
   };
   if (!root.events) root.events = [];
   root.events.push(ev);
@@ -728,6 +756,7 @@ function setActiveEvent(id) {
   if (tn) tn.value = state.tournamentName || '';
   if (hs) hs.value = state.handlePct || 3;
   if (hd) hd.textContent = (state.handlePct || 3) + '%';
+  updatePayoutModeUI();
   renderTeams();
   renderBettors();
   updateTote();
@@ -1078,6 +1107,27 @@ function prepareCashLabels() {
       setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
     };
   }
+}
+
+// ─── PAYOUT MODE ─────────────────────────────────────────────────────────────
+function setPayoutMode(mode) {
+  state.payoutMode = mode;
+  syncRootFromState();
+  save();
+  updatePayoutModeUI();
+}
+
+function updatePayoutModeUI() {
+  const mode = state.payoutMode || 'simplified';
+  const simpEl  = document.getElementById('mode-simplified');
+  const trackEl = document.getElementById('mode-racetrack');
+  if (simpEl)  simpEl.checked  = (mode === 'simplified');
+  if (trackEl) trackEl.checked = (mode === 'racetrack');
+  // Highlight active label
+  const simpLabel  = document.getElementById('mode-label-simplified');
+  const trackLabel = document.getElementById('mode-label-racetrack');
+  if (simpLabel)  simpLabel.style.border  = mode === 'simplified' ? '1px solid #D4A843' : '1px solid transparent';
+  if (trackLabel) trackLabel.style.border = mode === 'racetrack'  ? '1px solid #D4A843' : '1px solid transparent';
 }
 
 // ─── Boot & event listeners ─────────────────────────────────────────────────
@@ -2144,6 +2194,7 @@ function calcPayouts() {
   const { p1, p2, p3 } = state.placements;
   const placements = [p1, p2, p3];
   const take = state.handlePct / 100;
+  const mode = state.payoutMode || 'simplified';
 
   const pools = { win: 0, place: 0, show: 0 };
   state.bets.forEach(b => { pools[b.type] += b.amount; });
@@ -2157,6 +2208,7 @@ function calcPayouts() {
 
   const covers = (bet, pos) => bet.teamId === 'FIELD' || bet.teamId === placements[pos];
 
+  // Stakes per finishing position
   const winStake  = state.bets.filter(b => b.type==='win'   && covers(b,0)).reduce((s,b)=>s+b.amount,0);
   const pl1Stake  = state.bets.filter(b => b.type==='place' && covers(b,0)).reduce((s,b)=>s+b.amount,0);
   const pl2Stake  = state.bets.filter(b => b.type==='place' && covers(b,1)).reduce((s,b)=>s+b.amount,0);
@@ -2164,50 +2216,79 @@ function calcPayouts() {
   const sh2Stake  = state.bets.filter(b => b.type==='show'  && covers(b,1)).reduce((s,b)=>s+b.amount,0);
   const sh3Stake  = state.bets.filter(b => b.type==='show'  && covers(b,2)).reduce((s,b)=>s+b.amount,0);
 
-  // PLACE pool redistribution:
-  // If one finishing position has no winning tickets, its half rolls to the other half.
-  // If neither has tickets, entire place pool stays with house.
-  let pl1Pool, pl2Pool;
-  if (pl1Stake === 0 && pl2Stake === 0) {
-    pl1Pool = 0; pl2Pool = 0;
-  } else if (pl1Stake === 0) {
-    pl1Pool = 0; pl2Pool = net.place;
-  } else if (pl2Stake === 0) {
-    pl1Pool = net.place; pl2Pool = 0;
-  } else {
-    pl1Pool = net.place / 2; pl2Pool = net.place / 2;
-  }
-
-  // SHOW pool redistribution:
-  // Divide net show pool equally among only the slices that have winning tickets.
-  // Empty slices roll into the remaining winning slices rather than going to house.
-  const shStakes  = [sh1Stake, sh2Stake, sh3Stake];
-  const shHasWin  = shStakes.map(s => s > 0);
-  const shWinCt   = shHasWin.filter(Boolean).length;
-  const shPools   = shHasWin.map(hasWin => hasWin && shWinCt > 0 ? net.show / shWinCt : 0);
-  const sh1Pool   = shPools[0];
-  const sh2Pool   = shPools[1];
-  const sh3Pool   = shPools[2];
-
   const ppd = (pool, stake) => stake > 0 ? pool / stake : 0;
-  const winPPD  = ppd(net.win, winStake);
-  const pl1PPD  = ppd(pl1Pool, pl1Stake);
-  const pl2PPD  = ppd(pl2Pool, pl2Stake);
-  const sh1PPD  = ppd(sh1Pool, sh1Stake);
-  const sh2PPD  = ppd(sh2Pool, sh2Stake);
-  const sh3PPD  = ppd(sh3Pool, sh3Stake);
+
+  let winPPD, pl1PPD, pl2PPD, sh1PPD, sh2PPD, sh3PPD;
+
+  if (mode === 'racetrack') {
+    // ── TRUE RACETRACK MODEL ─────────────────────────────────────────────────
+    // WIN: entire net win pool divided among bettors on 1st-place finisher
+    winPPD = ppd(net.win, winStake);
+
+    // PLACE: entire net place pool divided among ALL bettors who picked
+    // either 1st OR 2nd finisher, proportional to amount wagered.
+    // Total winning stake = sum of bets on 1st finisher + bets on 2nd finisher
+    const plWinStake = pl1Stake + pl2Stake;
+    pl1PPD = ppd(net.place, pl1Stake + pl2Stake);  // same rate for both
+    pl2PPD = pl1PPD;                                // same pool, same rate
+
+    // SHOW: entire net show pool divided among ALL bettors who picked
+    // 1st, 2nd, OR 3rd finisher, proportional to amount wagered.
+    const shWinStake = sh1Stake + sh2Stake + sh3Stake;
+    sh1PPD = ppd(net.show, shWinStake);  // same rate for all three
+    sh2PPD = sh1PPD;
+    sh3PPD = sh1PPD;
+
+  } else {
+    // ── SIMPLIFIED MODEL (default) ───────────────────────────────────────────
+    // PLACE: split 50/50 between 1st-place and 2nd-place bettors
+    let pl1Pool, pl2Pool;
+    if (pl1Stake === 0 && pl2Stake === 0) {
+      pl1Pool = 0; pl2Pool = 0;
+    } else if (pl1Stake === 0) {
+      pl1Pool = 0; pl2Pool = net.place;
+    } else if (pl2Stake === 0) {
+      pl1Pool = net.place; pl2Pool = 0;
+    } else {
+      pl1Pool = net.place / 2; pl2Pool = net.place / 2;
+    }
+    pl1PPD = ppd(pl1Pool, pl1Stake);
+    pl2PPD = ppd(pl2Pool, pl2Stake);
+
+    // SHOW: split equally among positions that have winning tickets
+    const shStakes = [sh1Stake, sh2Stake, sh3Stake];
+    const shHasWin = shStakes.map(s => s > 0);
+    const shWinCt  = shHasWin.filter(Boolean).length;
+    const shPools  = shHasWin.map(hasWin => hasWin && shWinCt > 0 ? net.show / shWinCt : 0);
+    sh1PPD = ppd(shPools[0], sh1Stake);
+    sh2PPD = ppd(shPools[1], sh2Stake);
+    sh3PPD = ppd(shPools[2], sh3Stake);
+
+    winPPD = ppd(net.win, winStake);
+  }
 
   const betResults = state.bets.map(b => {
     let payout = 0;
     if (b.type === 'win') {
       if (covers(b,0)) payout = b.amount * (1 + winPPD);
     } else if (b.type === 'place') {
-      if      (covers(b,0)) payout = b.amount * (1 + pl1PPD);
-      else if (covers(b,1)) payout = b.amount * (1 + pl2PPD);
+      if (covers(b,0) || covers(b,1)) payout = b.amount * (1 + pl1PPD);
     } else if (b.type === 'show') {
-      if      (covers(b,0)) payout = b.amount * (1 + sh1PPD);
-      else if (covers(b,1)) payout = b.amount * (1 + sh2PPD);
-      else if (covers(b,2)) payout = b.amount * (1 + sh3PPD);
+      if (covers(b,0) || covers(b,1) || covers(b,2)) payout = b.amount * (1 + sh1PPD);
+    }
+    // Simplified uses positional PPD — override for simplified mode
+    if (mode !== 'racetrack') {
+      payout = 0;
+      if (b.type === 'win') {
+        if (covers(b,0)) payout = b.amount * (1 + winPPD);
+      } else if (b.type === 'place') {
+        if      (covers(b,0)) payout = b.amount * (1 + pl1PPD);
+        else if (covers(b,1)) payout = b.amount * (1 + pl2PPD);
+      } else if (b.type === 'show') {
+        if      (covers(b,0)) payout = b.amount * (1 + sh1PPD);
+        else if (covers(b,1)) payout = b.amount * (1 + sh2PPD);
+        else if (covers(b,2)) payout = b.amount * (1 + sh3PPD);
+      }
     }
     return { ...b, payout: Math.round(payout * 100) / 100 };
   });
@@ -2224,7 +2305,7 @@ function calcPayouts() {
   const totalPayout   = scaledResults.reduce((s,b) => s + b.payout, 0);
   const houseRetained = Math.round((totalCollected - totalPayout) * 100) / 100;
 
-  return { betResults: scaledResults, pools, net, houseRetained, totalCollected, totalPayout };
+  return { betResults: scaledResults, pools, net, houseRetained, totalCollected, totalPayout, mode };
 }
 
 
@@ -2269,7 +2350,8 @@ function renderResults() {
   }).join('');
 
   document.getElementById('balance-msg').innerHTML = balanced
-    ? '<span style="color:#3DB86E;">✓ Books balanced — payout never exceeds collected less house</span>'
+    ? '<span style="color:#3DB86E;">✓ Books balanced — payout never exceeds collected less house</span>' +
+      '<span style="display:block;font-size:10px;color:#7A9E89;font-weight:400;margin-top:2px;">Model: ' + (mode === 'racetrack' ? 'True Racetrack' : 'Simplified') + '</span>'
     : '<span style="color:#E05252;">⚠ Reconciliation issue</span>';
 
   const bettorMap = {};
@@ -2521,6 +2603,7 @@ load();
 document.getElementById('tournament-name').value = state.tournamentName || '';
 document.getElementById('handle-slider').value   = state.handlePct || 3;
 document.getElementById('handle-display').textContent = (state.handlePct || 3) + '%';
+updatePayoutModeUI();
 renderTeams();
 renderBettors();
 renderEvents();
