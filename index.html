@@ -276,6 +276,27 @@
     <div class="screen" id="screen-entry">
       <div class="section-head">📋 Bet Entry</div>
 
+      <!-- Print Sheet — standalone, not tied to bettor -->
+      <div class="card">
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">🖨 BETTING SHEETS</div>
+        <div style="font-size:12px;color:#EDE8DC;margin-bottom:10px;line-height:1.6;">
+          Print blank sheets to hand out. Bettors fill in their name and amounts, return with cash.
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="field" style="flex:1;">
+            <label>Copies</label>
+            <select id="sheet-copies" style="background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;width:100%;">
+              <option value="1">1 copy</option>
+              <option value="2">2 copies</option>
+              <option value="5" selected>5 copies</option>
+              <option value="10">10 copies</option>
+              <option value="20">20 copies</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="printBettingSheet()" style="white-space:nowrap;margin-top:18px;">🖨 Print Sheets</button>
+        </div>
+      </div>
+
       <!-- Bettor selector -->
       <div class="card">
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">BETTOR</div>
@@ -283,7 +304,6 @@
           <select id="entry-bettor" style="flex:1;background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;" onchange="loadEntrySheet()">
             <option value="">— Select Bettor —</option>
           </select>
-          <button class="btn btn-ghost" onclick="printBettingSheet()" style="white-space:nowrap;font-size:12px;">🖨 Print Sheet</button>
         </div>
         <div style="font-size:10px;color:#7A9E89;margin-top:6px;">Select a bettor to load their entry grid, or print a blank sheet</div>
       </div>
@@ -456,7 +476,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v4.9</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v5.1</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -1274,38 +1294,37 @@ function loadEntrySheet() {
 
   // Build entry rows
   const rows = document.getElementById('entry-rows');
+
+  // Generate $0-$100 options once
+  const amtOptions = '<option value="0">—</option>' +
+    Array.from({length: 100}, (_,i) => '<option value="' + (i+1) + '">$' + (i+1) + '</option>').join('');
+
+  function makeSelect(teamId, type, isField, color, borderColor) {
+    return '<select data-team="' + teamId + '" data-type="' + type + '"' + (isField ? ' data-field="1"' : '') +
+      ' style="background:#162219;border:1px solid ' + borderColor + ';border-radius:6px;color:' + color + ';' +
+      'padding:5px 2px;font-size:12px;text-align:center;outline:none;width:100%;-webkit-appearance:auto;" ' +
+      'onchange="updateEntryTotals()">' + amtOptions + '</select>';
+  }
+
   if (rows) {
     const teamRows = teams.map(t =>
       '<div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;align-items:center;padding:4px 4px;">' +
         '<div style="font-size:13px;font-weight:600;color:#EDE8DC;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(t.name) + '">' + esc(t.name) + '</div>' +
-        '<input type="number" min="0" step="1" placeholder="—" data-team="' + t.id + '" data-type="win" ' +
-          'style="background:#162219;border:1px solid #2B4033;border-radius:6px;color:#3DB86E;padding:6px 4px;font-size:13px;text-align:center;outline:none;width:100%;" ' +
-          'oninput="updateEntryTotals()" />' +
-        '<input type="number" min="0" step="1" placeholder="—" data-team="' + t.id + '" data-type="place" ' +
-          'style="background:#162219;border:1px solid #2B4033;border-radius:6px;color:#5AAEDD;padding:6px 4px;font-size:13px;text-align:center;outline:none;width:100%;" ' +
-          'oninput="updateEntryTotals()" />' +
-        '<input type="number" min="0" step="1" placeholder="—" data-team="' + t.id + '" data-type="show" ' +
-          'style="background:#162219;border:1px solid #2B4033;border-radius:6px;color:#B07FDE;padding:6px 4px;font-size:13px;text-align:center;outline:none;width:100%;" ' +
-          'oninput="updateEntryTotals()" />' +
+        makeSelect(t.id, 'win',   false, '#3DB86E', '#2B4033') +
+        makeSelect(t.id, 'place', false, '#5AAEDD', '#2B4033') +
+        makeSelect(t.id, 'show',  false, '#B07FDE', '#2B4033') +
       '</div>'
     ).join('');
 
-    // Field row — amount is multiplied by number of teams on submit
     const nTeams = teams.length;
     const fieldRow =
       '<div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;align-items:center;padding:4px 4px;border-top:1px solid #2B4033;margin-top:4px;">' +
         '<div style="font-size:13px;font-weight:600;color:#D4A843;">🌐 Field' +
           (nTeams > 0 ? '<div style="font-size:9px;color:#7A9E89;">×' + nTeams + ' teams</div>' : '') +
         '</div>' +
-        '<input type="number" min="0" step="1" placeholder="—" data-team="FIELD" data-type="win" data-field="1" ' +
-          'style="background:#162219;border:1px solid #D4A84344;border-radius:6px;color:#3DB86E;padding:6px 4px;font-size:13px;text-align:center;outline:none;width:100%;" ' +
-          'oninput="updateEntryTotals()" />' +
-        '<input type="number" min="0" step="1" placeholder="—" data-team="FIELD" data-type="place" data-field="1" ' +
-          'style="background:#162219;border:1px solid #D4A84344;border-radius:6px;color:#5AAEDD;padding:6px 4px;font-size:13px;text-align:center;outline:none;width:100%;" ' +
-          'oninput="updateEntryTotals()" />' +
-        '<input type="number" min="0" step="1" placeholder="—" data-team="FIELD" data-type="show" data-field="1" ' +
-          'style="background:#162219;border:1px solid #D4A84344;border-radius:6px;color:#B07FDE;padding:6px 4px;font-size:13px;text-align:center;outline:none;width:100%;" ' +
-          'oninput="updateEntryTotals()" />' +
+        makeSelect('FIELD', 'win',   true, '#3DB86E', '#D4A84344') +
+        makeSelect('FIELD', 'place', true, '#5AAEDD', '#D4A84344') +
+        makeSelect('FIELD', 'show',  true, '#B07FDE', '#D4A84344') +
       '</div>';
 
     rows.innerHTML = teamRows + fieldRow;
@@ -1315,15 +1334,15 @@ function loadEntrySheet() {
 }
 
 function updateEntryTotals() {
-  const inputs = document.querySelectorAll('#entry-rows input');
+  const selects = document.querySelectorAll('#entry-rows select');
   const nTeams = (state.teams||[]).length;
   let winTotal = 0, placeTotal = 0, showTotal = 0;
-  inputs.forEach(inp => {
-    const v = parseFloat(inp.value) || 0;
-    const mult = inp.dataset.field ? Math.max(1, nTeams) : 1;
-    if (inp.dataset.type === 'win')   winTotal   += v * mult;
-    if (inp.dataset.type === 'place') placeTotal += v * mult;
-    if (inp.dataset.type === 'show')  showTotal  += v * mult;
+  selects.forEach(sel => {
+    const v = parseFloat(sel.value) || 0;
+    const mult = sel.dataset.field ? Math.max(1, nTeams) : 1;
+    if (sel.dataset.type === 'win')   winTotal   += v * mult;
+    if (sel.dataset.type === 'place') placeTotal += v * mult;
+    if (sel.dataset.type === 'show')  showTotal  += v * mult;
   });
   const grand = winTotal + placeTotal + showTotal;
   const tw = document.getElementById('entry-total-win');
@@ -1341,16 +1360,16 @@ function submitEntrySheet() {
   const bettorId = sel ? sel.value : '';
   if (!bettorId) { alert('Please select a bettor.'); return; }
 
-  const inputs = document.querySelectorAll('#entry-rows input');
+  const selects = document.querySelectorAll('#entry-rows select');
   const betsToAdd = [];
   const nTeams = (state.teams||[]).length;
-  inputs.forEach(inp => {
-    const unitAmount = parseFloat(inp.value);
+  selects.forEach(sel => {
+    const unitAmount = parseFloat(sel.value);
     if (unitAmount > 0) {
-      const isField     = inp.dataset.field === '1';
+      const isField      = sel.dataset.field === '1';
       const storedAmount = isField && nTeams > 0 ? unitAmount * nTeams : unitAmount;
       betsToAdd.push({
-        teamId: inp.dataset.team, type: inp.dataset.type,
+        teamId: sel.dataset.team, type: sel.dataset.type,
         amount: storedAmount, unitAmount: isField ? unitAmount : null,
         fieldTeamCount: isField && nTeams > 0 ? nTeams : null
       });
@@ -1378,7 +1397,7 @@ function submitEntrySheet() {
   updateHeader();
 
   // Clear the grid
-  document.querySelectorAll('#entry-rows input').forEach(inp => { inp.value = ''; });
+  document.querySelectorAll('#entry-rows select').forEach(sel => { sel.value = '0'; });
   updateEntryTotals();
   renderEntryTickets(bettorId);
 
@@ -1427,10 +1446,11 @@ function renderEntryTickets(bettorId) {
 }
 
 function printBettingSheet() {
-  const teams = [...(state.teams||[])].sort((a,b) => a.name.localeCompare(b.name));
-  const ev    = activeEvent();
+  const teams  = [...(state.teams||[])].sort((a,b) => a.name.localeCompare(b.name));
+  const ev     = activeEvent();
   const evName = ev ? ev.name : (state.tournamentName || 'Last Call Invitational');
-  const year  = ev ? new Date(ev.createdAt).getFullYear() : new Date().getFullYear();
+  const year   = ev ? new Date(ev.createdAt).getFullYear() : new Date().getFullYear();
+  const copies = parseInt(document.getElementById('sheet-copies')?.value || '1');
 
   const rows = teams.map((t,i) =>
     '<tr style="background:' + (i%2===0?'#fff':'#f9f9f9') + ';">' +
@@ -1442,31 +1462,18 @@ function printBettingSheet() {
     '</tr>'
   ).join('');
 
-  // Field row at bottom
   const fieldRow =
     '<tr style="background:#fffbf0;border-top:2px solid #D4A843;">' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;font-size:12px;font-weight:700;color:#8F6E2A;">🌐 FIELD (×' + teams.length + ' teams)</td>' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;font-size:10px;color:#888;vertical-align:bottom;">per-team $</td>' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;font-size:10px;color:#888;vertical-align:bottom;">per-team $</td>' +
-      '<td style="padding:6px 10px;border:1px solid #ddd;font-size:10px;color:#888;vertical-align:bottom;">per-team $</td>' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;font-size:12px;font-weight:700;color:#8F6E2A;">🌐 FIELD (×' + teams.length + ' teams — enter per-team amount)</td>' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;"></td>' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;"></td>' +
+      '<td style="padding:6px 10px;border:1px solid #ddd;"></td>' +
       '<td style="padding:6px 10px;border:1px solid #ddd;background:#f0f0f0;"></td>' +
     '</tr>';
 
-  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"/>' +
-    '<title>' + esc(evName) + ' — Betting Sheet</title>' +
-    '<style>' +
-      'body{font-family:Arial,sans-serif;margin:20px;font-size:13px;color:#000;}' +
-      'h2{margin:0 0 2px;font-size:18px;}' +
-      '.sub{color:#555;font-size:11px;margin-bottom:12px;}' +
-      '.bettor-box{border:1px solid #999;border-radius:4px;padding:8px 12px;margin-bottom:14px;min-height:32px;}' +
-      '.bettor-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}' +
-      'table{width:100%;border-collapse:collapse;}' +
-      'th{background:#1E2E23;color:#D4A843;padding:7px 10px;font-size:11px;letter-spacing:1px;border:1px solid #999;}' +
-      'td{font-size:12px;}' +
-      '.total-row td{background:#f5f5f5;font-weight:700;border-top:2px solid #333;}' +
-      '.ref{font-size:10px;color:#999;text-align:right;margin-top:10px;}' +
-      '@media print{body{margin:10px;}}' +
-    '</style></head><body>' +
+  // One sheet template
+  const sheet =
+    '<div class="sheet">' +
     '<h2>' + esc(evName) + '</h2>' +
     '<div class="sub">Texas Scramble &middot; ' + year + ' &middot; Parimutuel Betting Sheet</div>' +
     '<div class="bettor-label">Name of Bettor</div>' +
@@ -1481,17 +1488,36 @@ function printBettingSheet() {
       '</tr></thead>' +
       '<tbody>' + rows + fieldRow + '</tbody>' +
       '<tfoot><tr class="total-row">' +
-        '<td style="padding:8px 10px;border:1px solid #ddd;">TOTAL</td>' +
+        '<td style="padding:8px 10px;border:1px solid #ddd;">COLUMN TOTAL</td>' +
         '<td style="padding:8px 10px;border:1px solid #ddd;"></td>' +
         '<td style="padding:8px 10px;border:1px solid #ddd;"></td>' +
         '<td style="padding:8px 10px;border:1px solid #ddd;"></td>' +
-        '<td style="padding:8px 10px;border:1px solid #ddd;background:#f0f0f0;"></td>' +
+        '<td style="padding:8px 10px;border:1px solid #ddd;background:#f0f0f0;font-weight:700;">GRAND TOTAL</td>' +
       '</tr></tfoot>' +
     '</table>' +
-    '<div class="ref">Last Call Invitational &middot; ' + year + '</div>' +
-    '</body></html>';
+    '<div class="ref">Last Call Invitational &middot; ' + year + ' &middot; Cash must match Grand Total</div>' +
+    '</div>';
 
-  // Use in-page print style (same approach as ticket — no new tab)
+  // Repeat for number of copies, page-break between each
+  const allSheets = Array(copies).fill(sheet).join('<div style="page-break-after:always;"></div>');
+
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"/>' +
+    '<title>' + esc(evName) + ' — Betting Sheet</title>' +
+    '<style>' +
+      'body{font-family:Arial,sans-serif;margin:0;font-size:13px;color:#000;}' +
+      '.sheet{padding:20px;max-width:720px;margin:0 auto;}' +
+      'h2{margin:0 0 2px;font-size:18px;}' +
+      '.sub{color:#555;font-size:11px;margin-bottom:12px;}' +
+      '.bettor-box{border:1px solid #999;border-radius:4px;padding:8px 12px;margin-bottom:14px;min-height:32px;}' +
+      '.bettor-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}' +
+      'table{width:100%;border-collapse:collapse;margin-bottom:8px;}' +
+      'th{background:#1E2E23;color:#D4A843;padding:7px 10px;font-size:11px;letter-spacing:1px;border:1px solid #999;}' +
+      'td{font-size:12px;}' +
+      '.total-row td{background:#f5f5f5;font-weight:700;border-top:2px solid #333;border:1px solid #ddd;}' +
+      '.ref{font-size:10px;color:#999;text-align:right;margin-top:6px;}' +
+      '@media print{body{margin:0;} .sheet{padding:12px;}}' +
+    '</style></head><body>' + allSheets + '</body></html>';
+
   const styleId = 'sheet-print-style';
   let s = document.getElementById(styleId);
   if (!s) {
@@ -1507,7 +1533,6 @@ function printBettingSheet() {
     wrapper.style.display = 'none';
     document.body.appendChild(wrapper);
   }
-  // Inject the HTML into wrapper's shadow
   wrapper.innerHTML = '';
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;';
