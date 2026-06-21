@@ -338,7 +338,7 @@
     <div class="screen" id="screen-entry">
       <div class="section-head">📋 Bet Entry</div>
 
-      <!-- Bettor selector — first -->
+      <!-- 1. Bettor selector -->
       <div class="card">
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">BETTOR</div>
         <div style="display:flex;gap:8px;">
@@ -346,45 +346,10 @@
             <option value="">— Select Bettor —</option>
           </select>
         </div>
-        <div style="font-size:10px;color:#7A9E89;margin-top:6px;">Select a bettor to load their entry grid, or print a blank sheet</div>
+        <div style="font-size:10px;color:#7A9E89;margin-top:6px;">Select a bettor to load their entry grid</div>
       </div>
 
-      <!-- Print Sheet — second -->
-      <div class="card">
-        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">🖨 BETTING SHEETS</div>
-        <div style="font-size:12px;color:#EDE8DC;margin-bottom:10px;line-height:1.6;">
-          Print blank sheets to hand out. Bettors fill in their name and amounts, return with cash.
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <div class="field" style="flex:1;">
-            <label>Copies</label>
-            <select id="sheet-copies" style="background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;width:100%;">
-              <option value="1">1 copy</option>
-              <option value="2">2 copies</option>
-              <option value="5" selected>5 copies</option>
-              <option value="10">10 copies</option>
-              <option value="20">20 copies</option>
-            </select>
-          </div>
-          <button class="btn btn-primary" onclick="printBettingSheet()" style="white-space:nowrap;margin-top:18px;">🖨 Prepare Sheets</button>
-        </div>
-        <button id="sheet-print-btn" class="btn btn-primary" style="display:none;width:100%;margin-top:10px;font-size:15px;padding:14px;">🖨 Print Betting Sheets</button>
-      </div>
-
-      <!-- Import Bets from CSV — third -->
-      <div class="card">
-        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">📥 IMPORT BETS FROM CSV</div>
-        <div style="font-size:12px;color:#EDE8DC;margin-bottom:4px;line-height:1.6;">
-          Bulk-load bets from a spreadsheet exported as CSV.
-        </div>
-        <div style="font-size:10px;color:#7A9E89;margin-bottom:10px;line-height:1.6;">
-          4 columns: <strong style="color:#EDE8DC;">Bettor Name · Team Name · Type (W P S WP WPS) · Amount</strong>
-        </div>
-        <input type="file" id="import-bets-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBets(this)" />
-        <div id="import-bets-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;margin-top:6px;"></div>
-      </div>
-
-      <!-- Entry grid -->
+      <!-- 2. Entry grid — appears directly below bettor when selected -->
       <div class="card" id="entry-grid-card" style="display:none;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <div>
@@ -414,10 +379,45 @@
         <div style="text-align:right;font-size:13px;font-weight:700;color:#D4A843;padding:4px;" id="entry-grand-total">Grand Total: $0.00</div>
       </div>
 
-      <!-- Submitted tickets for this bettor -->
+      <!-- 3. Submitted tickets for this bettor -->
       <div class="card" id="entry-tickets-card" style="display:none;">
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">SUBMITTED TICKETS</div>
         <div id="entry-tickets-list"></div>
+      </div>
+
+      <!-- 4. Print Sheets — always at bottom -->
+      <div class="card">
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">🖨 BETTING SHEETS</div>
+        <div style="font-size:12px;color:#EDE8DC;margin-bottom:10px;line-height:1.6;">
+          Print blank sheets to hand out. Bettors fill in their name and amounts, return with cash.
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="field" style="flex:1;">
+            <label>Copies</label>
+            <select id="sheet-copies" style="background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;width:100%;">
+              <option value="1">1 copy</option>
+              <option value="2">2 copies</option>
+              <option value="5" selected>5 copies</option>
+              <option value="10">10 copies</option>
+              <option value="20">20 copies</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="printBettingSheet()" style="white-space:nowrap;margin-top:18px;">🖨 Prepare Sheets</button>
+        </div>
+        <button id="sheet-print-btn" class="btn btn-primary" style="display:none;width:100%;margin-top:10px;font-size:15px;padding:14px;">🖨 Print Betting Sheets</button>
+      </div>
+
+      <!-- 5. Import Bets from CSV — always at bottom -->
+      <div class="card">
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">📥 IMPORT BETS FROM CSV</div>
+        <div style="font-size:12px;color:#EDE8DC;margin-bottom:4px;line-height:1.6;">
+          Bulk-load bets from a spreadsheet exported as CSV.
+        </div>
+        <div style="font-size:10px;color:#7A9E89;margin-bottom:10px;line-height:1.6;">
+          4 columns: <strong style="color:#EDE8DC;">Bettor Name · Team Name · Type (W P S WP WPS) · Amount</strong>
+        </div>
+        <input type="file" id="import-bets-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBets(this)" />
+        <div id="import-bets-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;margin-top:6px;"></div>
       </div>
     </div>
 
@@ -576,7 +576,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v13.7</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v13.8</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -702,7 +702,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v13.7: migrate missing house take fields
+        // v13.8: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1360,7 +1360,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v13.7';
+const APP_VERSION = 'v13.8';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
