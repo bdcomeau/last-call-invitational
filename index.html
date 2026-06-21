@@ -338,7 +338,18 @@
     <div class="screen" id="screen-entry">
       <div class="section-head">📋 Bet Entry</div>
 
-      <!-- Print Sheet — standalone, not tied to bettor -->
+      <!-- Bettor selector — first -->
+      <div class="card">
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">BETTOR</div>
+        <div style="display:flex;gap:8px;">
+          <select id="entry-bettor" style="flex:1;background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;" onchange="loadEntrySheet()">
+            <option value="">— Select Bettor —</option>
+          </select>
+        </div>
+        <div style="font-size:10px;color:#7A9E89;margin-top:6px;">Select a bettor to load their entry grid, or print a blank sheet</div>
+      </div>
+
+      <!-- Print Sheet — second -->
       <div class="card">
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">🖨 BETTING SHEETS</div>
         <div style="font-size:12px;color:#EDE8DC;margin-bottom:10px;line-height:1.6;">
@@ -360,7 +371,7 @@
         <button id="sheet-print-btn" class="btn btn-primary" style="display:none;width:100%;margin-top:10px;font-size:15px;padding:14px;">🖨 Print Betting Sheets</button>
       </div>
 
-      <!-- Import Bets from CSV -->
+      <!-- Import Bets from CSV — third -->
       <div class="card">
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">📥 IMPORT BETS FROM CSV</div>
         <div style="font-size:12px;color:#EDE8DC;margin-bottom:4px;line-height:1.6;">
@@ -371,17 +382,6 @@
         </div>
         <input type="file" id="import-bets-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBets(this)" />
         <div id="import-bets-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;margin-top:6px;"></div>
-      </div>
-
-      <!-- Bettor selector -->
-      <div class="card">
-        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">BETTOR</div>
-        <div style="display:flex;gap:8px;">
-          <select id="entry-bettor" style="flex:1;background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;" onchange="loadEntrySheet()">
-            <option value="">— Select Bettor —</option>
-          </select>
-        </div>
-        <div style="font-size:10px;color:#7A9E89;margin-top:6px;">Select a bettor to load their entry grid, or print a blank sheet</div>
       </div>
 
       <!-- Entry grid -->
@@ -576,7 +576,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v13.6</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v13.7</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -702,7 +702,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v13.6: migrate missing house take fields
+        // v13.7: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1360,7 +1360,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v13.6';
+const APP_VERSION = 'v13.7';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
