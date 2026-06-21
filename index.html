@@ -540,7 +540,7 @@
 
   </div><!-- /content -->
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.4</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.5</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -588,7 +588,6 @@ const STORAGE_KEY = 'lci-v4';
 // Bettors are shared across all events
 
 let root = {
-  bettors: [],
   events: [],
   activeEventId: null
 };
@@ -655,6 +654,16 @@ function load() {
     const s = localStorage.getItem(STORAGE_KEY);
     if (s) {
       root = JSON.parse(s);
+      // Clean up legacy root-level bettors — bettors are now per-event
+      if (root.bettors) delete root.bettors;
+      // Ensure every event has a bettors array
+      (root.events || []).forEach(ev => {
+        if (!ev.bettors) ev.bettors = [];
+        if (!ev.teams) ev.teams = [];
+        if (!ev.bets) ev.bets = [];
+        if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
+        if (!ev.nextTicketNum) ev.nextTicketNum = 1;
+      });
       syncStateFromRoot();
       return;
     }
@@ -669,7 +678,7 @@ function load() {
         teams: oldState.teams || [], bets: oldState.bets || [], bettors: oldState.bettors || [],
         placements: oldState.placements || { p1:'', p2:'', p3:'' }, nextTicketNum: 1
       };
-      root = { bettors: oldState.bettors || [], events: [migEvent], activeEventId: migEvent.id };
+      root = { events: [migEvent], activeEventId: migEvent.id };
       syncStateFromRoot();
       save();
     }
@@ -694,7 +703,6 @@ function teamName(id) {
 // ─── Tab navigation ───────────────────────────────────────────────────────────
 function showTab(tab) {
   try {
-    syncRootFromState();  // always persist current event state on tab switch
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('#tabbar button').forEach(b => b.classList.remove('active'));
     const screen = document.getElementById('screen-' + tab);
@@ -752,7 +760,19 @@ function newTournament() {
   if (tnEl) tnEl.value = name;
   updateHeader();
   renderEvents();
-  showTab('setup');
+  // Navigate to setup without calling syncRootFromState (showTab does that)
+  // We already have clean state for the new event — just render setup directly
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#tabbar button').forEach(b => b.classList.remove('active'));
+  const setupScreen = document.getElementById('screen-setup');
+  if (setupScreen) setupScreen.classList.add('active');
+  const tabs = ['events','setup','bettors','entry','wagers','placements','results'];
+  const btns = document.querySelectorAll('#tabbar button');
+  if (btns[1]) btns[1].classList.add('active');
+  window.scrollTo(0, 0);
+  renderTeams();
+  renderBettors();
+  updateTote();
 }
 
 function setActiveEvent(id) {
@@ -958,12 +978,16 @@ function initResetSlider() {
 // One bettor per page, clean and readable, suitable for handing out with cash.
 
 function prepareCashLabels() {
-  const { p1, p2, p3 } = state.placements;
+  const ev = activeEvent();
+  if (!ev) { alert('No active event. Please open an event first.'); return; }
+  const { p1, p2, p3 } = ev.placements || {};
   if (!p1 || !p2 || !p3) {
     alert('Please set the final placements (1st, 2nd, 3rd) on the Placements tab first.');
     return;
   }
 
+  // Sync state from active event before calculating
+  syncStateFromRoot();
   const { betResults } = calcPayouts();
 
   // Group by bettor — only winners
@@ -984,7 +1008,6 @@ function prepareCashLabels() {
     return;
   }
 
-  const ev     = activeEvent();
   const evName = ev ? ev.name : (state.tournamentName || 'Last Call Invitational');
   const p1Name = teamName(p1), p2Name = teamName(p2), p3Name = teamName(p3);
   const now    = new Date().toLocaleString('en-CA', { dateStyle:'long', timeStyle:'short' });
@@ -2212,13 +2235,20 @@ function setPlacement(pos, val) {
 // If nobody bet a winning position the pool carries to house (no winners = no payout).
 // Total payout is mathematically guaranteed ≤ total collected − house, so books always balance.
 function calcPayouts() {
-  const { p1, p2, p3 } = state.placements;
+  // Always read from active event directly — never trust state alone
+  const ev = activeEvent();
+  const _placements = (ev ? ev.placements : state.placements) || state.placements || { p1:'', p2:'', p3:'' };
+  const _bets       = (ev ? ev.bets       : state.bets)       || state.bets       || [];
+  const _handlePct  = (ev ? ev.handlePct  : state.handlePct)  || state.handlePct  || 0;
+  const _payoutMode = (ev ? ev.payoutMode : state.payoutMode) || state.payoutMode || 'simplified';
+
+  const { p1, p2, p3 } = _placements;
   const placements = [p1, p2, p3];
-  const take = state.handlePct / 100;
-  const mode = state.payoutMode || 'simplified';
+  const take = _handlePct / 100;
+  const mode = _payoutMode;
 
   const pools = { win: 0, place: 0, show: 0 };
-  state.bets.forEach(b => { pools[b.type] += b.amount; });
+  _bets.forEach(b => { pools[b.type] += b.amount; });
 
   const totalCollected = pools.win + pools.place + pools.show;
 
@@ -2232,12 +2262,12 @@ function calcPayouts() {
   const covers = (bet, pos) => bet.teamId === 'FIELD' || bet.teamId === placements[pos];
 
   // Winning stakes per pool/position
-  const winStake  = state.bets.filter(b => b.type==='win'   && covers(b,0)).reduce((s,b)=>s+b.amount,0);
-  const pl1Stake  = state.bets.filter(b => b.type==='place' && covers(b,0)).reduce((s,b)=>s+b.amount,0);
-  const pl2Stake  = state.bets.filter(b => b.type==='place' && covers(b,1)).reduce((s,b)=>s+b.amount,0);
-  const sh1Stake  = state.bets.filter(b => b.type==='show'  && covers(b,0)).reduce((s,b)=>s+b.amount,0);
-  const sh2Stake  = state.bets.filter(b => b.type==='show'  && covers(b,1)).reduce((s,b)=>s+b.amount,0);
-  const sh3Stake  = state.bets.filter(b => b.type==='show'  && covers(b,2)).reduce((s,b)=>s+b.amount,0);
+  const winStake  = _bets.filter(b => b.type==='win'   && covers(b,0)).reduce((s,b)=>s+b.amount,0);
+  const pl1Stake  = _bets.filter(b => b.type==='place' && covers(b,0)).reduce((s,b)=>s+b.amount,0);
+  const pl2Stake  = _bets.filter(b => b.type==='place' && covers(b,1)).reduce((s,b)=>s+b.amount,0);
+  const sh1Stake  = _bets.filter(b => b.type==='show'  && covers(b,0)).reduce((s,b)=>s+b.amount,0);
+  const sh2Stake  = _bets.filter(b => b.type==='show'  && covers(b,1)).reduce((s,b)=>s+b.amount,0);
+  const sh3Stake  = _bets.filter(b => b.type==='show'  && covers(b,2)).reduce((s,b)=>s+b.amount,0);
 
   // CORRECT FORMULA: payout = (bet / winning_stake) × net_pool
   // i.e. your proportional share of the net pool — stake is NOT returned separately
@@ -2257,7 +2287,7 @@ function calcPayouts() {
     const shTotalStake = sh1Stake + sh2Stake + sh3Stake;
     const shShare = (bet) => shTotalStake > 0 ? (bet / shTotalStake) * net.show : 0;
 
-    betResults = state.bets.map(b => {
+    betResults = _bets.map(b => {
       let payout = 0;
       if (b.type === 'win'   && covers(b,0)) payout = winShare(b.amount);
       if (b.type === 'place' && (covers(b,0) || covers(b,1))) payout = plShare(b.amount);
@@ -2295,7 +2325,7 @@ function calcPayouts() {
       (bet) => shStakes[2] > 0 ? (bet / shStakes[2]) * shPools[2] : 0,
     ];
 
-    betResults = state.bets.map(b => {
+    betResults = _bets.map(b => {
       let payout = 0;
       if (b.type === 'win'   && covers(b,0)) payout = winShare(b.amount);
       if (b.type === 'place') {
