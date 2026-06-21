@@ -222,10 +222,35 @@
         </div>
       </div>
       <div class="card">
-        <div style="font-size:12px;color:#7A9E89;margin-bottom:8px;">HANDLE — organizer retains this % of all pools before payout</div>
-        <div style="display:flex;align-items:center;gap:14px;">
-          <input type="range" id="handle-slider" min="0" max="5" step="0.5" value="3" />
-          <div id="handle-display">3%</div>
+        <div style="font-size:12px;color:#7A9E89;margin-bottom:10px;letter-spacing:1px;">HOUSE TAKE</div>
+        <!-- Mode toggle -->
+        <div style="display:flex;gap:6px;margin-bottom:12px;">
+          <button id="take-mode-pct" onclick="setTakeMode('pct')"
+            style="flex:1;padding:8px;border-radius:8px;border:1px solid #D4A843;background:#D4A843;color:#111;font-size:12px;font-weight:700;cursor:pointer;">
+            % of Pool
+          </button>
+          <button id="take-mode-flat" onclick="setTakeMode('flat')"
+            style="flex:1;padding:8px;border-radius:8px;border:1px solid #2B4033;background:transparent;color:#7A9E89;font-size:12px;font-weight:700;cursor:pointer;">
+            Flat $
+          </button>
+        </div>
+        <!-- Percentage mode -->
+        <div id="take-pct-row">
+          <div style="font-size:11px;color:#7A9E89;margin-bottom:6px;">Organizer retains this % of total pool before payout</div>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <input type="range" id="handle-slider" min="0" max="10" step="0.5" value="3" />
+            <div id="handle-display" style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;color:#D4A843;min-width:60px;">3%</div>
+          </div>
+        </div>
+        <!-- Flat dollar mode -->
+        <div id="take-flat-row" style="display:none;">
+          <div style="font-size:11px;color:#7A9E89;margin-bottom:6px;">Organizer retains this fixed dollar amount from the total pool</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:20px;color:#D4A843;font-weight:700;">$</span>
+            <input type="number" id="handle-flat-input" min="0" step="1" value="0" placeholder="0"
+              style="flex:1;background:#162219;border:1px solid #2B4033;border-radius:8px;color:#D4A843;padding:10px 12px;font-size:22px;font-weight:700;outline:none;width:100%;"
+              oninput="updateFlatTake()" />
+          </div>
         </div>
       </div>
       <div class="card">
@@ -538,7 +563,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.7</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.9</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -595,6 +620,8 @@ let root = {
 let state = {
   tournamentName: 'Last Call Invitational',
   handlePct: 3,
+  handleMode: 'pct',
+  handleFlat: 0,
   payoutMode: 'simplified',
   teams: [],
   bettors: [],
@@ -629,6 +656,8 @@ function syncRootFromState() {
   if (ev) {
     ev.name          = state.tournamentName;
     ev.handlePct     = state.handlePct;
+    ev.handleMode    = state.handleMode  || 'pct';
+    ev.handleFlat    = state.handleFlat  !== undefined ? state.handleFlat  : 0;
     ev.payoutMode    = state.payoutMode || 'simplified';
     ev.nextTicketNum = state.nextTicketNum || 1;
     // Deep copy so event object is independent of state references
@@ -672,7 +701,7 @@ function load() {
       const migEvent = {
         id: uid(), name: oldState.tournamentName || 'Last Call Invitational',
         createdAt: new Date().toISOString(), archived: false,
-        handlePct: oldState.handlePct || 3, payoutMode: 'simplified',
+        handlePct: oldState.handlePct || 3, handleMode: 'pct', handleFlat: 0, payoutMode: 'simplified',
         teams: oldState.teams || [], bets: oldState.bets || [], bettors: oldState.bettors || [],
         placements: oldState.placements || { p1:'', p2:'', p3:'' }, nextTicketNum: 1
       };
@@ -754,7 +783,7 @@ function newTournament() {
   save();
   const ev = {
     id: uid(), name: name, createdAt: new Date().toISOString(), archived: false,
-    handlePct: 3, payoutMode: 'simplified', teams: [], bets: [], bettors: [], placements: { p1:'', p2:'', p3:'' }, nextTicketNum: 1
+    handlePct: 3, handleMode: 'pct', handleFlat: 0, payoutMode: 'simplified', teams: [], bets: [], bettors: [], placements: { p1:'', p2:'', p3:'' }, nextTicketNum: 1
   };
   if (!root.events) root.events = [];
   root.events.push(ev);
@@ -801,6 +830,7 @@ function setActiveEvent(id) {
   if (hs) hs.value = state.handlePct || 3;
   if (hd) hd.textContent = (state.handlePct || 3) + '%';
   updatePayoutModeUI();
+  updateHandleUI();
   renderTeams();
   renderBettors();
   updateTote();
@@ -1000,7 +1030,7 @@ function prepareCashLabels() {
 
   // Sync state from active event before calculating
   syncStateFromRoot();
-  const { betResults } = calcPayouts();
+  const { betResults, handleMode: _handleMode, handleFlat: _handleFlat, handlePct: _handlePct } = calcPayouts();
 
   // Group by bettor — only winners
   const bettorMap = {};
@@ -1148,7 +1178,12 @@ function prepareCashLabels() {
   const btn = document.getElementById('label-print-btn');
   if (btn) {
     btn.style.display = '';
-    btn.textContent = '🖨 Open & Print ' + winners.length + ' Winner Summary Sheet' + (winners.length>1?'s':'');
+    const modeLabel = (_handleMode === 'flat')
+      ? 'Flat $' + (_handleFlat || 0)
+      : (_handlePct || 0) + '% handle';
+    const ts = new Date().toLocaleTimeString('en-CA', { timeStyle: 'short' });
+    btn.innerHTML = '🖨 Open &amp; Print ' + winners.length + ' Winner Summary Sheet' + (winners.length>1?'s':'') +
+      '<div style="font-size:10px;font-weight:400;opacity:0.8;margin-top:2px;">' + modeLabel + ' · Calculated ' + ts + '</div>';
     btn.onclick = function() {
       const blob = new Blob([html], { type: 'text/html' });
       const url  = URL.createObjectURL(blob);
@@ -1190,10 +1225,48 @@ document.getElementById('tournament-name').addEventListener('input', function() 
   save(); updateHeader();
 });
 
+// ─── HOUSE TAKE MODE ──────────────────────────────────────────────────────────
+function setTakeMode(mode) {
+  state.handleMode = mode;
+  const pctRow  = document.getElementById('take-pct-row');
+  const flatRow = document.getElementById('take-flat-row');
+  const pctBtn  = document.getElementById('take-mode-pct');
+  const flatBtn = document.getElementById('take-mode-flat');
+  if (pctRow)  pctRow.style.display  = mode === 'pct'  ? '' : 'none';
+  if (flatRow) flatRow.style.display = mode === 'flat' ? '' : 'none';
+  if (pctBtn)  { pctBtn.style.background  = mode === 'pct'  ? '#D4A843' : 'transparent'; pctBtn.style.color  = mode === 'pct'  ? '#111' : '#7A9E89'; pctBtn.style.borderColor = mode === 'pct'  ? '#D4A843' : '#2B4033'; }
+  if (flatBtn) { flatBtn.style.background = mode === 'flat' ? '#D4A843' : 'transparent'; flatBtn.style.color = mode === 'flat' ? '#111' : '#7A9E89'; flatBtn.style.borderColor = mode === 'flat' ? '#D4A843' : '#2B4033'; }
+  syncRootFromState(); save(); updateTote();
+}
+
+function updateFlatTake() {
+  const inp = document.getElementById('handle-flat-input');
+  state.handleFlat = parseFloat(inp ? inp.value : 0) || 0;
+  syncRootFromState(); save(); updateTote();
+}
+
+function updateHandleUI() {
+  const mode = state.handleMode || 'pct';
+  const pctRow  = document.getElementById('take-pct-row');
+  const flatRow = document.getElementById('take-flat-row');
+  const pctBtn  = document.getElementById('take-mode-pct');
+  const flatBtn = document.getElementById('take-mode-flat');
+  const hs      = document.getElementById('handle-slider');
+  const hd      = document.getElementById('handle-display');
+  const fi      = document.getElementById('handle-flat-input');
+  if (pctRow)  pctRow.style.display  = mode === 'pct'  ? '' : 'none';
+  if (flatRow) flatRow.style.display = mode === 'flat' ? '' : 'none';
+  if (pctBtn)  { pctBtn.style.background  = mode === 'pct'  ? '#D4A843' : 'transparent'; pctBtn.style.color  = mode === 'pct'  ? '#111' : '#7A9E89'; pctBtn.style.borderColor = mode === 'pct'  ? '#D4A843' : '#2B4033'; }
+  if (flatBtn) { flatBtn.style.background = mode === 'flat' ? '#D4A843' : 'transparent'; flatBtn.style.color = mode === 'flat' ? '#111' : '#7A9E89'; flatBtn.style.borderColor = mode === 'flat' ? '#D4A843' : '#2B4033'; }
+  if (hs) hs.value = state.handlePct !== undefined ? state.handlePct : 3;
+  if (hd) hd.textContent = (state.handlePct !== undefined ? state.handlePct : 3) + '%';
+  if (fi) fi.value = state.handleFlat !== undefined ? state.handleFlat : 0;
+}
+
 document.getElementById('handle-slider').addEventListener('input', function() {
   state.handlePct = parseFloat(this.value);
   document.getElementById('handle-display').textContent = state.handlePct + '%';
-  save(); updateTote();
+  syncRootFromState(); save(); updateTote();
 });
 
 function addTeam() {
@@ -1317,18 +1390,25 @@ function renderBetDropdowns() {
 }
 
 function updateTote() {
-  const bets = state.bets;
+  const bets  = state.bets;
   const total = bets.reduce((s,b) => s+b.amount, 0);
   const win   = bets.filter(b=>b.type==='win').reduce((s,b)=>s+b.amount,0);
   const place = bets.filter(b=>b.type==='place').reduce((s,b)=>s+b.amount,0);
   const show  = bets.filter(b=>b.type==='show').reduce((s,b)=>s+b.amount,0);
-  const house = total * (state.handlePct / 100);
+  const mode  = state.handleMode || 'pct';
+  let house, footerText;
+  if (mode === 'flat') {
+    house = Math.min(state.handleFlat || 0, total);
+    footerText = 'House flat: ' + fmt(house) + ' · Net payout pool: ' + fmt(total - house);
+  } else {
+    house = total * ((state.handlePct || 0) / 100);
+    footerText = 'Handle (' + (state.handlePct || 0) + '%): ' + fmt(house) + ' · Net payout pool: ' + fmt(total - house);
+  }
   document.getElementById('tote-total').textContent = fmt(total);
   document.getElementById('tote-win').textContent   = fmt(win);
   document.getElementById('tote-place').textContent = fmt(place);
   document.getElementById('tote-show').textContent  = fmt(show);
-  document.getElementById('tote-footer').textContent =
-    `Handle (${state.handlePct}%): ${fmt(house)} · Net payout pool: ${fmt(total - house)}`;
+  document.getElementById('tote-footer').textContent = footerText;
   updateOdds();
 }
 
@@ -2255,6 +2335,9 @@ function calcPayouts() {
   const _handlePct  = ev ? (ev.handlePct  !== undefined ? ev.handlePct  : (state.handlePct  || 0)) : (state.handlePct  || 0);
   const _payoutMode = ev ? (ev.payoutMode !== undefined ? ev.payoutMode : (state.payoutMode || 'simplified')) : (state.payoutMode || 'simplified');
 
+  const _handleMode = ev ? (ev.handleMode || 'pct') : (state.handleMode || 'pct');
+  const _handleFlat = ev ? (ev.handleFlat !== undefined ? ev.handleFlat : 0) : (state.handleFlat || 0);
+
   const { p1, p2, p3 } = _placements;
   const placements = [p1, p2, p3];
   const take = _handlePct / 100;
@@ -2265,12 +2348,26 @@ function calcPayouts() {
 
   const totalCollected = pools.win + pools.place + pools.show;
 
-  // Net pools after house take — exact when take=0 to avoid floating point drift
-  const net = {
-    win:   take === 0 ? pools.win   : Math.round(pools.win   * (1 - take) * 100) / 100,
-    place: take === 0 ? pools.place : Math.round(pools.place * (1 - take) * 100) / 100,
-    show:  take === 0 ? pools.show  : Math.round(pools.show  * (1 - take) * 100) / 100,
-  };
+  // Calculate house amount based on mode
+  let houseAmt;
+  if (_handleMode === 'flat') {
+    // Flat dollar take — distribute proportionally across pools
+    houseAmt = Math.min(_handleFlat, totalCollected);
+  } else {
+    // Percentage take
+    houseAmt = take === 0 ? 0 : Math.round(totalCollected * take * 100) / 100;
+  }
+
+  // Net pools after house take — distribute house proportionally across WIN/PLACE/SHOW
+  const netTotal = totalCollected - houseAmt;
+  const net = totalCollected > 0 ? {
+    win:   Math.round(pools.win   / totalCollected * netTotal * 100) / 100,
+    place: Math.round(pools.place / totalCollected * netTotal * 100) / 100,
+    show:  Math.round(pools.show  / totalCollected * netTotal * 100) / 100,
+  } : { win: 0, place: 0, show: 0 };
+  // Absorb any rounding drift in win pool
+  const netDrift = Math.round((net.win + net.place + net.show - netTotal) * 100);
+  if (netDrift !== 0) net.win = Math.round((net.win - netDrift/100) * 100) / 100;
 
   const covers = (bet, pos) => bet.teamId === 'FIELD' || bet.teamId === placements[pos];
 
@@ -2382,9 +2479,9 @@ function calcPayouts() {
   }
 
   const totalPayout   = scaledResults.reduce((s,b) => s + b.payout, 0);
-  const houseRetained = take === 0 ? 0 : Math.round((totalCollected - totalPayout) * 100) / 100;
+  const houseRetained = Math.round((totalCollected - totalPayout) * 100) / 100;
 
-  return { betResults: scaledResults, pools, net, houseRetained, totalCollected, totalPayout, mode };
+  return { betResults: scaledResults, pools, net, houseRetained, totalCollected, totalPayout, mode, handleMode: _handleMode, handleFlat: _handleFlat, handlePct: _handlePct };
 }
 
 function renderResults() {
@@ -2690,6 +2787,7 @@ document.getElementById('tournament-name').value = state.tournamentName || '';
 document.getElementById('handle-slider').value   = state.handlePct || 3;
 document.getElementById('handle-display').textContent = (state.handlePct || 3) + '%';
 updatePayoutModeUI();
+updateHandleUI();
 renderTeams();
 renderBettors();
 renderEvents();
