@@ -455,16 +455,6 @@
         <input type="text" class="bare" id="wager-search" placeholder="🔍  Filter wagers…" oninput="renderWagers()" style="margin-bottom:10px;" />
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;" id="wagers-count"></div>
         <div class="scroll-list" id="wagers-list" style="max-height:440px;"></div>
-        <!-- Cash envelope labels -->
-        <div class="card" style="border-color:#D4A84344;">
-          <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:8px;">🏆 WINNER PAYOUT SUMMARY</div>
-          <div style="font-size:12px;color:#7A9E89;margin-bottom:10px;line-height:1.5;">
-            Prints one winner summary per bettor — letter size, one per page.<br/>
-            Shows their bets, which ones paid out, and total winnings.
-          </div>
-          <button class="btn btn-primary" onclick="prepareCashLabels()" style="width:100%;">🏆 Prepare Winner Summaries</button>
-          <button id="label-print-btn" class="btn btn-primary" style="display:none;width:100%;margin-top:8px;font-size:15px;padding:14px;">🖨 Open & Print Winner Summaries</button>
-        </div>
       </div>
     </div>
     <div class="screen" id="screen-placements">
@@ -535,12 +525,20 @@
             <div style="font-family:Barlow Condensed;font-size:20px;font-weight:700;" id="recon-balance"></div>
           </div>
         </div>
+        <!-- Winner payout summaries -->
+        <div class="card" style="border-color:#D4A84344;">
+          <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:8px;">🏆 WINNER PAYOUT SUMMARY</div>
+          <div style="font-size:12px;color:#7A9E89;margin-bottom:10px;line-height:1.5;">
+            Prints one winner summary per bettor — letter size, one per page.<br/>
+            Shows their bets, which ones paid out, and total winnings.
+          </div>
+          <button class="btn btn-primary" onclick="prepareCashLabels()" style="width:100%;">🏆 Prepare Winner Summaries</button>
+          <button id="label-print-btn" class="btn btn-primary" style="display:none;width:100%;margin-top:8px;font-size:15px;padding:14px;">🖨 Open & Print Winner Summaries</button>
+        </div>
       </div>
     </div>
 
-  </div><!-- /content -->
-
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.5</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.6</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -717,6 +715,15 @@ function showTab(tab) {
     if (tab === 'wagers')     { renderBetDropdowns(); renderWagers(); updateTote(); }
     if (tab === 'placements') renderPlacements();
     if (tab === 'results')    renderResults();
+    // Reset persistent print buttons when switching away from their tabs
+    if (tab !== 'results') {
+      const lb = document.getElementById('label-print-btn');
+      if (lb) { lb.style.display = 'none'; lb.onclick = null; }
+    }
+    if (tab !== 'entry') {
+      const sb = document.getElementById('sheet-print-btn');
+      if (sb) { sb.style.display = 'none'; sb.onclick = null; }
+    }
   } catch(e) { /* silent */ }
 }
 
@@ -781,6 +788,11 @@ function setActiveEvent(id) {
   root.activeEventId = id;
   syncStateFromRoot();
   save();
+  // Reset print buttons — they're event-specific
+  const lb = document.getElementById('label-print-btn');
+  if (lb) { lb.style.display = 'none'; lb.onclick = null; }
+  const sb = document.getElementById('sheet-print-btn');
+  if (sb) { sb.style.display = 'none'; sb.onclick = null; }
   updateHeader();
   const tn = document.getElementById('tournament-name');
   const hs = document.getElementById('handle-slider');
@@ -2362,8 +2374,15 @@ function calcPayouts() {
 }
 
 function renderResults() {
-  const { p1, p2, p3 } = state.placements;
-  const ready = p1 && p2 && p3;
+  // Always reset the print buttons when rendering results for any event
+  const labelBtn = document.getElementById('label-print-btn');
+  if (labelBtn) { labelBtn.style.display = 'none'; labelBtn.onclick = null; }
+
+  // Read placements directly from active event — never trust state alone
+  const ev = activeEvent();
+  const _placements = (ev && ev.placements) ? ev.placements : (state.placements || {});
+  const { p1, p2, p3 } = _placements;
+  const ready = !!(p1 && p2 && p3);
   document.getElementById('results-placeholder').style.display = ready ? 'none' : '';
   const content = document.getElementById('results-content');
   if (!ready) { content.style.display = 'none'; return; }
