@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { background: #0E1A12; color: #EDE8DC; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; height: 100%; }
+    html, body { background: #0E1A12; color: #EDE8DC; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; height: 100%; width: 100%; overflow: hidden; position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
     button { cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; }
     input, select { font-family: inherit; }
     ::-webkit-scrollbar { width: 3px; }
@@ -25,18 +25,21 @@
 
     /* Layout — simple reliable iOS approach */
     #app { max-width: 620px; margin: 0 auto; }
-    #header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: #162219; border-bottom: 1px solid #2B4033; padding: calc(env(safe-area-inset-top, 50px) + 8px) 18px 10px; }
+    #header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: #162219; border-bottom: 1px solid #2B4033; padding: calc(env(safe-area-inset-top, 50px) + 8px) 18px 10px;
+              transform: translateZ(0); -webkit-transform: translateZ(0); }
     #header .eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; color: #8F6E2A; letter-spacing: 3px; }
     #header .title { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 900; color: #D4A843; line-height: 1.1; }
     #header .stats { font-size: 11px; color: #7A9E89; margin-top: 3px; display: flex; gap: 12px; flex-wrap: wrap; }
     #header .stats .pool-amt { color: #D4A843; }
     #header .stats .places-ok { color: #3DB86E; }
 
-    #content { padding: 18px 14px 40px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    #content { padding: 18px 14px 40px; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
 
-    #tabbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 999;
+    #tabbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
               background: #162219; border-top: 1px solid #2B4033; display: flex;
-              padding-bottom: env(safe-area-inset-bottom, 0px); }
+              padding-bottom: env(safe-area-inset-bottom, 0px);
+              transform: translateZ(0); -webkit-transform: translateZ(0);
+              will-change: transform; }
     #tabbar button { flex: 1; background: none; border: none; border-top: 2px solid transparent;
                      padding: 9px 4px 7px; display: flex; flex-direction: column; align-items: center;
                      gap: 2px; color: #7A9E89; font-family: inherit; cursor: pointer; }
@@ -577,7 +580,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v11.7</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v12.0</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -704,7 +707,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v11.7: migrate missing house take fields
+        // v12.0: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1994,14 +1997,32 @@ function shareTicket() {
   const bettor = state.bettors.find(function(b) { return b.id === td.bettorId; });
   const phone  = bettor ? (bettor.phone || '').replace(/\D/g,'') : '';
 
+  // Derive ticket groupings from state (all tickets for this bettor)
+  const allBets = state.bets.filter(function(b) { return b.bettorId === td.bettorId && b.ticketRef; });
+  const byTicket = {};
+  allBets.forEach(function(b) {
+    if (!byTicket[b.ticketRef]) byTicket[b.ticketRef] = [];
+    byTicket[b.ticketRef].push(b);
+  });
+  // Ensure current ticket always present
+  if (td.ref && !byTicket[td.ref]) {
+    byTicket[td.ref] = (td.bets || []).map(function(b) {
+      return { type: b.type, teamId: null, _teamName: b.teamName || b._teamName, amount: b.amount };
+    });
+  }
+  const ticketRefs = Object.keys(byTicket).sort();
+  const grandTotal = ticketRefs.reduce(function(s, ref) {
+    return s + byTicket[ref].reduce(function(s2, b) { return s2 + b.amount; }, 0);
+  }, 0);
+
   const receiptHTML = buildReceiptHTML(td);
-  const blob = new Blob([receiptHTML], { type: 'text/html' });
+  const blob    = new Blob([receiptHTML], { type: 'text/html' });
   const lastRef = ticketRefs[ticketRefs.length - 1] || 'receipt';
   const safeName = (td.bettorName || 'bettor').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-  const fname = safeName + '-' + lastRef + '-' + grandTotal + '.html';  // e.g. Doug-Comeau-LCI-0042-80.html
-  const file  = new File([blob], fname, { type: 'text/html' });
+  const fname   = safeName + '-' + lastRef + '-' + grandTotal + '.html';
+  const file    = new File([blob], fname, { type: 'text/html' });
 
-  // Build plain text version for SMS
+  // Build plain text for SMS
   let smsText = '🏌 ' + evName + ' — Betting Receipt\n';
   smsText += 'Bettor: ' + td.bettorName + '\n';
   ticketRefs.forEach(function(ref) {
@@ -2009,17 +2030,18 @@ function shareTicket() {
     const sub  = bets.reduce(function(s,b){ return s+b.amount; },0);
     smsText += '\nTicket: ' + ref + '\n';
     bets.forEach(function(b) {
-      smsText += b.type.toUpperCase() + '  ' + teamName(b.teamId) + '  $' + b.amount + '\n';
+      const tname = b._teamName || teamName(b.teamId);
+      smsText += b.type.toUpperCase() + '  ' + tname + '  $' + b.amount + '\n';
     });
     smsText += 'Subtotal: $' + sub + '\n';
   });
   smsText += '\nTOTAL: $' + grandTotal + '\nGood luck! 🍀';
 
-  // If phone on file — open iMessage pre-filled with text receipt in body
+  // Phone on file → iMessage with text body
   if (phone) {
     window.open('sms:' + phone + '&body=' + encodeURIComponent(smsText), '_blank');
   } else {
-    // No phone — share file (AirDrop → Files, Mail, etc.)
+    // No phone → share file (AirDrop → Files, Mail, etc.)
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
       navigator.share({ files: [file], title: evName + ' Receipt — ' + td.bettorName })
         .catch(function(e) { if (e.name !== 'AbortError') openReceiptTab(receiptHTML); });
@@ -3108,8 +3130,9 @@ function applyLayout() {
   if (!header || !content || !tabbar) return;
   const hh = header.offsetHeight;
   const th = tabbar.offsetHeight;
-  content.style.marginTop = hh + 'px';
-  content.style.height    = 'calc(100vh - ' + hh + 'px - ' + th + 'px)';
+  content.style.top    = hh + 'px';
+  content.style.bottom = th + 'px';
+  content.style.height = '';  // let top/bottom control it
 }
 window.addEventListener('load',   applyLayout);
 window.addEventListener('resize', applyLayout);
