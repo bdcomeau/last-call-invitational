@@ -563,7 +563,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v8.1</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v8.2</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -692,7 +692,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v8.1: migrate missing house take fields
+        // v8.2: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -2333,33 +2333,17 @@ function setPlacement(pos, val) {
 // If nobody bet a winning position the pool carries to house (no winners = no payout).
 // Total payout is mathematically guaranteed ≤ total collected − house, so books always balance.
 function calcPayouts() {
-  // Always read from active event directly — never trust state alone
   const ev = activeEvent();
   const _placements = ev ? (ev.placements || { p1:'', p2:'', p3:'' }) : (state.placements || { p1:'', p2:'', p3:'' });
   const _bets       = ev ? (ev.bets || []) : (state.bets || []);
 
-  // For house take: check live UI elements first — they are always authoritative
-  // This handles cases where stored data has stale handleMode/handlePct
-  const flatBtn  = document.getElementById('take-mode-flat');
-  const flatInp  = document.getElementById('handle-flat-input');
-  const slider   = document.getElementById('handle-slider');
-  const uiHasFlatActive = flatBtn && (flatBtn.style.background === 'rgb(212, 168, 67)' || flatBtn.style.background === '#D4A843');
+  // Read house take from state — state is always synced from UI via setTakeMode/updateFlatTake
+  // Use state as primary, fall back to ev for safety
+  const _handleMode = state.handleMode || (ev ? ev.handleMode : null) || 'pct';
+  const _handlePct  = (state.handlePct  !== undefined) ? state.handlePct  : (ev ? (ev.handlePct  !== undefined ? ev.handlePct  : 0) : 0);
+  const _handleFlat = (state.handleFlat !== undefined) ? state.handleFlat : (ev ? (ev.handleFlat !== undefined ? ev.handleFlat : 0) : 0);
 
-  let _handleMode, _handleFlat, _handlePct;
-  if (uiHasFlatActive) {
-    _handleMode = 'flat';
-    _handleFlat = flatInp ? (parseFloat(flatInp.value) || 0) : 0;
-    _handlePct  = 0;
-  } else {
-    // Fall back to event/state values
-    _handleMode = ev ? (ev.handleMode || state.handleMode || 'pct') : (state.handleMode || 'pct');
-    _handlePct  = ev ? (ev.handlePct !== undefined ? ev.handlePct : (state.handlePct !== undefined ? state.handlePct : 0)) : (state.handlePct || 0);
-    _handleFlat = ev ? (ev.handleFlat !== undefined ? ev.handleFlat : 0) : (state.handleFlat || 0);
-    // Also check slider for % mode
-    if (_handleMode === 'pct' && slider) _handlePct = parseFloat(slider.value) || _handlePct;
-  }
-
-  const _payoutMode = ev ? (ev.payoutMode !== undefined ? ev.payoutMode : (state.payoutMode || 'simplified')) : (state.payoutMode || 'simplified');
+  const _payoutMode = state.payoutMode || (ev ? ev.payoutMode : null) || 'simplified';
 
   const { p1, p2, p3 } = _placements;
   const placements = [p1, p2, p3];
@@ -2508,9 +2492,9 @@ function calcPayouts() {
 }
 
 function renderResults() {
-  // Always flush current state to event before calculating
-  syncRootFromState();
-  save();
+  // Reload state from active event to ensure house take settings are current
+  syncStateFromRoot();
+  updateHandleUI();
   // Always reset the print buttons when rendering results for any event
   const labelBtn = document.getElementById('label-print-btn');
   if (labelBtn) { labelBtn.style.display = 'none'; labelBtn.onclick = null; }
