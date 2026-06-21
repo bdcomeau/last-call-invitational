@@ -254,7 +254,7 @@
           <button class="btn btn-primary" onclick="addTeam()">+ Add Team</button>
           <div class="divider"></div>
           <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import a list —</div>
-          <div style="font-size:10px;color:#7A9E89;text-align:center;">Save as <strong style="color:#EDE8DC;">CSV</strong> from Excel/Numbers first · one name per row</div>
+          <div style="font-size:10px;color:#7A9E89;text-align:center;">Save as <strong style="color:#EDE8DC;">CSV</strong> from Excel/Numbers first</div><div style="font-size:10px;color:#7A9E89;text-align:center;">4 columns: <strong style="color:#EDE8DC;">Name · Cell · Email</strong> (cell &amp; email optional)</div>
           <input type="file" id="import-teams-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importTeams(this)" />
           <div id="import-teams-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
         </div>
@@ -293,11 +293,28 @@
           <button class="btn btn-primary" onclick="addBettor()">+ Add Bettor</button>
           <div class="divider"></div>
           <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import a list —</div>
-          <div style="font-size:10px;color:#7A9E89;text-align:center;">Save as <strong style="color:#EDE8DC;">CSV</strong> from Excel/Numbers first · one name per row</div>
+          <div style="font-size:10px;color:#7A9E89;text-align:center;">Save as <strong style="color:#EDE8DC;">CSV</strong> from Excel/Numbers first</div><div style="font-size:10px;color:#7A9E89;text-align:center;">4 columns: <strong style="color:#EDE8DC;">Name · Cell · Email</strong> (cell &amp; email optional)</div>
           <input type="file" id="import-bettors-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBettors(this)" />
           <div id="import-bettors-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
         </div>
       </div>
+      <!-- Edit bettor modal -->
+      <div id="bettor-edit-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000000CC;z-index:200;display:none;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#1E2E23;border-radius:14px;padding:20px;width:100%;max-width:400px;border:1px solid #2B4033;">
+          <div style="font-family:Barlow Condensed,sans-serif;font-size:13px;color:#8F6E2A;letter-spacing:2px;margin-bottom:14px;">EDIT BETTOR</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="field"><label>Full Name *</label><input type="text" id="edit-bettor-name" placeholder="Jane Doe" /></div>
+            <div class="field"><label>Cell Number</label><input type="tel" id="edit-bettor-phone" placeholder="555-867-5309" /></div>
+            <div class="field"><label>Email</label><input type="email" id="edit-bettor-email" placeholder="jane@example.com" /></div>
+            <input type="hidden" id="edit-bettor-id" />
+            <div style="display:flex;gap:8px;margin-top:4px;">
+              <button class="btn btn-ghost" style="flex:1;" onclick="closeBettorEdit()">Cancel</button>
+              <button class="btn btn-primary" style="flex:1;" onclick="saveBettorEdit()">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="card" id="bettors-card" style="display:none;">
         <input type="text" class="bare" id="bettor-search" placeholder="🔍  Search bettors…" oninput="renderBettors()" style="margin-bottom:10px;" />
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;" id="bettors-count"></div>
@@ -560,7 +577,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v10.7</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v11.0</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -687,7 +704,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v10.7: migrate missing house take fields
+        // v11.0: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1434,6 +1451,10 @@ function renderTeams() {
 function addBettor() {
   const name = document.getElementById('new-bettor-name').value.trim();
   if (!name) return;
+  if (state.bettors.find(b => b.name.toLowerCase() === name.toLowerCase())) {
+    alert('"' + name + '" is already in the bettors list.');
+    return;
+  }
   state.bettors.push({
     id: uid(), name,
     email: document.getElementById('new-bettor-email').value.trim(),
@@ -1443,6 +1464,38 @@ function addBettor() {
   document.getElementById('new-bettor-email').value = '';
   document.getElementById('new-bettor-phone').value = '';
   save(); renderBettors(); updateHeader();
+}
+
+function openBettorEdit(id) {
+  const b = state.bettors.find(x => x.id === id);
+  if (!b) return;
+  document.getElementById('edit-bettor-id').value    = id;
+  document.getElementById('edit-bettor-name').value  = b.name  || '';
+  document.getElementById('edit-bettor-phone').value = b.phone || '';
+  document.getElementById('edit-bettor-email').value = b.email || '';
+  const overlay = document.getElementById('bettor-edit-overlay');
+  overlay.style.display = 'flex';
+}
+
+function closeBettorEdit() {
+  document.getElementById('bettor-edit-overlay').style.display = 'none';
+}
+
+function saveBettorEdit() {
+  const id    = document.getElementById('edit-bettor-id').value;
+  const name  = document.getElementById('edit-bettor-name').value.trim();
+  const phone = document.getElementById('edit-bettor-phone').value.trim();
+  const email = document.getElementById('edit-bettor-email').value.trim();
+  if (!name) { document.getElementById('edit-bettor-name').focus(); return; }
+  const duplicate = state.bettors.find(x => x.id !== id && x.name.toLowerCase() === name.toLowerCase());
+  if (duplicate) { alert('"' + name + '" is already in the bettors list.'); return; }
+  const b = state.bettors.find(x => x.id === id);
+  if (!b) return;
+  b.name  = name;
+  b.phone = phone;
+  b.email = email;
+  syncRootFromState(); save(); renderBettors();
+  closeBettorEdit();
 }
 
 function removeBettor(id) {
@@ -1472,12 +1525,14 @@ function renderBettors() {
     const pill = betCount > 0
       ? `<span class="pill" style="background:#3DB86E20;color:#3DB86E;border:1px solid #3DB86E40;">${betCount} · ${fmt(betTotal)}</span>`
       : '';
+    const sub = [b.phone ? '📱 ' + esc(b.phone) : '', b.email ? esc(b.email) : ''].filter(Boolean).join('  ·  ');
     return `<div class="list-row">
-      <div>
+      <div style="flex:1;min-width:0;">
         <div class="row-name">${esc(b.name)}</div>
-        <div class="row-sub">${esc(b.email)}${b.phone ? ' · ' + esc(b.phone) : ''}</div>
+        ${sub ? `<div class="row-sub" style="font-size:10px;">${sub}</div>` : ''}
       </div>
-      <div style="display:flex;align-items:center;gap:8px;">${pill}
+      <div style="display:flex;align-items:center;gap:6px;">${pill}
+        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="openBettorEdit('${b.id}')">✏️</button>
         <button class="btn btn-danger" onclick="removeBettor('${b.id}')">✕</button>
       </div>
     </div>`;
@@ -1913,53 +1968,49 @@ function shareTicket() {
   const td = window._lastTicketData;
   if (!td) { printTicketOverlay(); return; }
 
-  const ev = activeEvent();
+  const ev     = activeEvent();
   const evName = ev ? ev.name : (state.tournamentName || 'Last Call Invitational');
+  const bettor = state.bettors.find(function(b) { return b.id === td.bettorId; });
+  const phone  = bettor ? (bettor.phone || '').replace(/\D/g,'') : '';
 
-  // Get ALL tickets for this bettor, grouped by ticketRef
-  const allBets = state.bets.filter(function(b) {
-    return b.bettorId === td.bettorId && b.ticketRef;
-  });
-  const byTicket = {};
-  allBets.forEach(function(b) {
-    if (!byTicket[b.ticketRef]) byTicket[b.ticketRef] = [];
-    byTicket[b.ticketRef].push(b);
-  });
-  const ticketRefs = Object.keys(byTicket).sort();
+  const receiptHTML = buildReceiptHTML(td);
+  const blob = new Blob([receiptHTML], { type: 'text/html' });
+  const fname = (td.bettorName || 'receipt').replace(/\s+/g,'-') + '-receipt.html';
+  const file  = new File([blob], fname, { type: 'text/html' });
 
-  // Build plain text — one block per ticket
-  let text = '🏌 ' + evName + ' — Betting Receipt\n';
-  text += 'Bettor: ' + td.bettorName + '\n';
-  text += '═════════════════════\n';
-
-  let grandTotal = 0;
-  ticketRefs.forEach(function(ref) {
-    const bets = byTicket[ref];
-    const ticketTotal = bets.reduce(function(s,b){ return s + b.amount; }, 0);
-    grandTotal += ticketTotal;
-    text += 'Ticket: ' + ref + '\n';
-    text += '─────────────────────\n';
-    bets.forEach(function(b) {
-      const tname = teamName(b.teamId);
-      text += b.type.toUpperCase().padEnd(6) + ' ' + tname.padEnd(16) + ' $' + b.amount + '\n';
-    });
-    text += 'Subtotal: $' + ticketTotal + '\n\n';
-  });
-
-  text += '═════════════════════\n';
-  text += ticketRefs.length + ' ticket' + (ticketRefs.length !== 1 ? 's' : '') + '  TOTAL: $' + grandTotal + '\n';
-  text += 'Good luck! 🍀';
-
-  if (navigator.share) {
-    navigator.share({ title: evName + ' — ' + td.bettorName + ' Receipts', text: text })
-      .catch(function(e) { if (e.name !== 'AbortError') printTicketOverlay(); });
-  } else if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).then(function() {
-      alert('Receipt copied to clipboard! Paste into iMessage or any app.');
-    });
+  // If phone on file — open iMessage pre-filled then share file
+  if (phone) {
+    window.open('sms:' + phone, '_blank');
+    setTimeout(function() {
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: evName + ' Receipt — ' + td.bettorName });
+      } else if (navigator.share) {
+        navigator.share({ title: evName + ' Receipt — ' + td.bettorName, url: URL.createObjectURL(blob) });
+      }
+    }, 600);
   } else {
-    printTicketOverlay();
+    // No phone — share file (AirDrop → Files, Mail, etc.)
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: evName + ' Receipt — ' + td.bettorName })
+        .catch(function(e) { if (e.name !== 'AbortError') openReceiptTab(receiptHTML); });
+    } else if (navigator.share) {
+      navigator.share({ title: evName + ' Receipt — ' + td.bettorName, url: URL.createObjectURL(blob) })
+        .catch(function(e) { if (e.name !== 'AbortError') openReceiptTab(receiptHTML); });
+    } else {
+      openReceiptTab(receiptHTML);
+    }
   }
+}
+
+function openReceiptTab(html) {
+  const blob = new Blob([html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const win  = window.open(url, '_blank');
+  if (!win) {
+    const tab = window.open('about:blank', '_blank');
+    if (tab) { tab.document.open(); tab.document.write(html); tab.document.close(); }
+  }
+  setTimeout(function() { URL.revokeObjectURL(url); }, 15000);
 }
 
 function closeTicket() {
@@ -1967,27 +2018,73 @@ function closeTicket() {
 }
 
 function printTicketOverlay() {
-  const body    = document.getElementById('ticket-overlay-body');
+  const td = window._lastTicketData;
+  if (td) { openReceiptTab(buildReceiptHTML(td)); return; }
+  // Fallback: use overlay body content
+  const body = document.getElementById('ticket-overlay-body');
   if (!body) return;
-  const content = body.innerHTML;
   const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"/>' +
     '<style>body{font-family:Arial,sans-serif;padding:20px;max-width:480px;margin:0 auto;}' +
-    '@media print{.no-print{display:none!important;} body{padding:10px;}}' +
-    '</style></head><body>' +
-    '<div class="no-print" style="text-align:center;margin-bottom:16px;">' +
-      '<button onclick="window.print()" style="background:#D4A843;color:#111;border:none;border-radius:6px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;">🖨 Print / Save as PDF</button>' +
-    '</div>' +
-    content + '</body></html>';
+    '@media print{body{padding:10px;}}' +
+    '</style></head><body>' + body.innerHTML + '</body></html>';
+  openReceiptTab(html);
+}
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const url  = URL.createObjectURL(blob);
-  const win  = window.open(url, '_blank');
-  if (!win) {
-    const tab = window.open('about:blank', '_blank');
-    if (tab) { tab.document.open(); tab.document.write(html); tab.document.close(); }
-    else { alert('Please allow popups for this site, then try again.'); }
-  }
-  setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+function buildReceiptHTML(td) {
+  const ev     = activeEvent();
+  const evName = ev ? ev.name : (state.tournamentName || 'Last Call Invitational');
+  const now    = new Date().toLocaleString('en-CA', { dateStyle:'medium', timeStyle:'short' });
+  const allBets = state.bets.filter(function(b) { return b.bettorId === td.bettorId && b.ticketRef; });
+  const byTicket = {};
+  allBets.forEach(function(b) {
+    if (!byTicket[b.ticketRef]) byTicket[b.ticketRef] = [];
+    byTicket[b.ticketRef].push(b);
+  });
+  const ticketRefs = Object.keys(byTicket).sort();
+  let grandTotal = 0;
+  ticketRefs.forEach(function(ref) { grandTotal += byTicket[ref].reduce(function(s,b){ return s+b.amount; },0); });
+  const typeClr = { win:'#8F6E2A', place:'#1a5590', show:'#5a1a90' };
+  const ticketSections = ticketRefs.map(function(ref) {
+    const bets = byTicket[ref];
+    const sub  = bets.reduce(function(s,b){ return s+b.amount; },0);
+    const rows = bets.map(function(b) {
+      return '<tr>' +
+        '<td style="padding:5px 10px;border-bottom:1px solid #eee;font-weight:700;color:' + (typeClr[b.type]||'#333') + ';font-size:11px;">' + b.type.toUpperCase() + '</td>' +
+        '<td style="padding:5px 10px;border-bottom:1px solid #eee;font-size:12px;">' + esc(teamName(b.teamId)) + '</td>' +
+        '<td style="padding:5px 10px;border-bottom:1px solid #eee;text-align:right;font-size:12px;">$' + b.amount + '</td>' +
+      '</tr>';
+    }).join('');
+    return '<div style="margin-bottom:16px;">' +
+      '<div style="background:#f9f6ee;border:1px solid #d4a843;border-radius:6px 6px 0 0;padding:6px 12px;display:flex;justify-content:space-between;">' +
+        '<span style="font-weight:700;font-size:13px;color:#8F6E2A;">🎟 ' + ref + '</span>' +
+        '<span style="font-size:12px;color:#555;">Subtotal: <strong>$' + sub + '</strong></span>' +
+      '</div>' +
+      '<table style="width:100%;border-collapse:collapse;border:1px solid #d4a843;border-top:none;">' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>' +
+    '</div>';
+  }).join('');
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"/>' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1"/>' +
+    '<title>' + esc(evName) + ' — ' + esc(td.bettorName) + ' Receipt</title>' +
+    '<style>@page{size:letter portrait;margin:18mm;}body{font-family:system-ui,-apple-system,sans-serif;color:#111;max-width:500px;margin:0 auto;padding:20px;}@media print{body{padding:0;}}</style>' +
+    '</head><body>' +
+    '<div style="border-bottom:2px solid #d4a843;padding-bottom:10px;margin-bottom:16px;">' +
+      '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;">Betting Receipt</div>' +
+      '<div style="font-size:22px;font-weight:700;">' + esc(evName) + '</div>' +
+      '<div style="font-size:11px;color:#666;">' + now + '</div>' +
+    '</div>' +
+    '<div style="background:#f0ebe0;border-radius:6px;padding:10px 14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:baseline;">' +
+      '<span style="font-size:16px;font-weight:700;">' + esc(td.bettorName) + '</span>' +
+      '<span style="font-size:11px;color:#555;">' + ticketRefs.length + ' ticket' + (ticketRefs.length!==1?'s':'') + '</span>' +
+    '</div>' +
+    ticketSections +
+    '<div style="border-top:2px solid #111;padding-top:10px;margin-top:8px;display:flex;justify-content:space-between;align-items:baseline;">' +
+      '<span style="font-size:14px;font-weight:700;">TOTAL</span>' +
+      '<span style="font-size:22px;font-weight:900;color:#1a7a3a;">$' + grandTotal + '</span>' +
+    '</div>' +
+    '<div style="margin-top:24px;font-size:10px;color:#aaa;text-align:center;">Good luck! 🍀 · ' + esc(evName) + ' · Parimutuel Betting</div>' +
+    '</body></html>';
 }
 
 // ─── ENTRY SHEET ─────────────────────────────────────────────────────────────
@@ -2877,13 +2974,24 @@ async function importBettors(input) {
   if (!file) return;
   if (!root.activeEventId) { showImportMsg('import-bettors-msg', -1, 0); input.value=''; return; }
   const rows = await parseFileToRows(file);
-  const names = rows.map(r => String(r[0]||'').trim()).filter(n => n.length > 0);
-  if (names.length === 0) { showImportMsg('import-bettors-msg', 0, 0); input.value=''; return; }
+  const validRows = rows.map(r => ({
+    name:  String(r[0]||'').trim(),
+    phone: String(r[1]||'').trim(),
+    email: String(r[2]||'').trim(),
+  })).filter(r => r.name.length > 0);
+  if (validRows.length === 0) { showImportMsg('import-bettors-msg', 0, 0); input.value=''; return; }
   if (!state.bettors) state.bettors = [];
   let added = 0, skipped = 0;
-  names.forEach(name => {
-    if (state.bettors.find(b => b.name.toLowerCase() === name.toLowerCase())) { skipped++; return; }
-    state.bettors.push({ id: uid(), name, email: '', phone: '' });
+  validRows.forEach(r => {
+    const existing = state.bettors.find(b => b.name.toLowerCase() === r.name.toLowerCase());
+    if (existing) {
+      // Update phone/email if provided in import
+      if (r.phone) existing.phone = r.phone;
+      if (r.email) existing.email = r.email;
+      skipped++;
+      return;
+    }
+    state.bettors.push({ id: uid(), name: r.name, phone: r.phone, email: r.email });
     added++;
   });
   syncRootFromState();
