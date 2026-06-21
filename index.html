@@ -563,7 +563,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v8.0</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v8.1</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -685,13 +685,17 @@ function load() {
       root = JSON.parse(s);
       // Clean up legacy root-level bettors — bettors are now per-event
       if (root.bettors) delete root.bettors;
-      // Ensure every event has a bettors array
+      // Ensure every event has all required fields — fills gaps from older versions
       (root.events || []).forEach(ev => {
         if (!ev.bettors) ev.bettors = [];
         if (!ev.teams) ev.teams = [];
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
+        // v8.1: migrate missing house take fields
+        if (ev.handleMode === undefined) ev.handleMode = 'pct';
+        if (ev.handleFlat === undefined) ev.handleFlat = 0;
+        if (ev.handlePct === undefined) ev.handlePct = 0;
       });
       syncStateFromRoot();
       return;
@@ -2332,13 +2336,30 @@ function calcPayouts() {
   // Always read from active event directly — never trust state alone
   const ev = activeEvent();
   const _placements = ev ? (ev.placements || { p1:'', p2:'', p3:'' }) : (state.placements || { p1:'', p2:'', p3:'' });
-  const _bets       = ev ? (ev.bets       || [])  : (state.bets  || []);
-  // FIX: use nullish coalescing logic — 0 is a valid value for handlePct, don't treat it as falsy
-  const _handlePct  = ev ? (ev.handlePct  !== undefined ? ev.handlePct  : (state.handlePct  || 0)) : (state.handlePct  || 0);
-  const _payoutMode = ev ? (ev.payoutMode !== undefined ? ev.payoutMode : (state.payoutMode || 'simplified')) : (state.payoutMode || 'simplified');
+  const _bets       = ev ? (ev.bets || []) : (state.bets || []);
 
-  const _handleMode = ev ? (ev.handleMode || 'pct') : (state.handleMode || 'pct');
-  const _handleFlat = ev ? (ev.handleFlat !== undefined ? ev.handleFlat : 0) : (state.handleFlat || 0);
+  // For house take: check live UI elements first — they are always authoritative
+  // This handles cases where stored data has stale handleMode/handlePct
+  const flatBtn  = document.getElementById('take-mode-flat');
+  const flatInp  = document.getElementById('handle-flat-input');
+  const slider   = document.getElementById('handle-slider');
+  const uiHasFlatActive = flatBtn && (flatBtn.style.background === 'rgb(212, 168, 67)' || flatBtn.style.background === '#D4A843');
+
+  let _handleMode, _handleFlat, _handlePct;
+  if (uiHasFlatActive) {
+    _handleMode = 'flat';
+    _handleFlat = flatInp ? (parseFloat(flatInp.value) || 0) : 0;
+    _handlePct  = 0;
+  } else {
+    // Fall back to event/state values
+    _handleMode = ev ? (ev.handleMode || state.handleMode || 'pct') : (state.handleMode || 'pct');
+    _handlePct  = ev ? (ev.handlePct !== undefined ? ev.handlePct : (state.handlePct !== undefined ? state.handlePct : 0)) : (state.handlePct || 0);
+    _handleFlat = ev ? (ev.handleFlat !== undefined ? ev.handleFlat : 0) : (state.handleFlat || 0);
+    // Also check slider for % mode
+    if (_handleMode === 'pct' && slider) _handlePct = parseFloat(slider.value) || _handlePct;
+  }
+
+  const _payoutMode = ev ? (ev.payoutMode !== undefined ? ev.payoutMode : (state.payoutMode || 'simplified')) : (state.payoutMode || 'simplified');
 
   const { p1, p2, p3 } = _placements;
   const placements = [p1, p2, p3];
@@ -2487,6 +2508,9 @@ function calcPayouts() {
 }
 
 function renderResults() {
+  // Always flush current state to event before calculating
+  syncRootFromState();
+  save();
   // Always reset the print buttons when rendering results for any event
   const labelBtn = document.getElementById('label-print-btn');
   if (labelBtn) { labelBtn.style.display = 'none'; labelBtn.onclick = null; }
