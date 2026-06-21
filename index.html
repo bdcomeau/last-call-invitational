@@ -567,7 +567,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v12.7</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v12.8</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -694,7 +694,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v12.7: migrate missing house take fields
+        // v12.8: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -3088,6 +3088,10 @@ async function importBets(input) {
     const typeRaw   = String(row[2]||'').trim().toLowerCase();
     const amountRaw = parseFloat(row[3]);
     if (!bettorRaw && !teamRaw && !typeRaw) return;
+
+    // Skip header row — if first cell looks like a column label
+    const lowerBettor = bettorRaw.toLowerCase();
+    if (lowerBettor === 'bettor' || lowerBettor === 'bettor name' || lowerBettor === 'name') return;
 
     const bettor = state.bettors.find(b => b.name.toLowerCase() === bettorRaw.toLowerCase());
     if (!bettor) { errors.push('Row ' + lineNum + ': bettor "' + bettorRaw + '" not found'); return; }
