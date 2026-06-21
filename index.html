@@ -576,7 +576,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v13.2</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v13.3</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -702,7 +702,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v13.2: migrate missing house take fields
+        // v13.3: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1358,7 +1358,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v13.2';
+const APP_VERSION = 'v13.3';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -2199,7 +2199,7 @@ function buildReceiptHTML(td) {
     }).join('');
     return '<div style="margin-bottom:16px;">' +
       '<div style="background:#f9f6ee;border:1px solid #d4a843;border-radius:6px 6px 0 0;padding:6px 12px;display:flex;justify-content:space-between;">' +
-        '<span style="font-weight:700;font-size:13px;color:#8F6E2A;">🎟 ' + ref + '</span>' +
+        '<span style="font-weight:700;font-size:13px;color:#8F6E2A;">Ticket: ' + ref + '</span>' +
         '<span style="font-size:12px;color:#555;">Subtotal: <strong>$' + sub + '</strong></span>' +
       '</div>' +
       '<table style="width:100%;border-collapse:collapse;border:1px solid #d4a843;border-top:none;">' +
@@ -2229,18 +2229,15 @@ function buildReceiptHTML(td) {
 
   return '<!DOCTYPE html><html><head><meta charset="utf-8"/>' +
     '<meta name="viewport" content="width=device-width,initial-scale=1"/>' +
-    '<title>' + esc(evName) + ' — ' + esc(td.bettorName) + ' Receipt</title>' +
+    '<title>' + esc(td.bettorName) + ' — Betting Receipt</title>' +
     '<style>' +
       '@page{size:letter portrait;margin:18mm;}' +
       'body{font-family:system-ui,-apple-system,sans-serif;color:#111;max-width:500px;margin:0 auto;padding:20px;}' +
-      '.pdf-btn{display:block;width:100%;padding:12px;margin-bottom:20px;background:#D4A843;color:#111;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;text-align:center;}' +
-      '@media print{.pdf-btn{display:none;}body{padding:0;}}' +
+      '@media print{body{padding:0;}}' +
     '</style>' +
     '</head><body>' +
-    '<button class="pdf-btn" onclick="window.print()">🖨 Save as PDF / Print</button>' +
     '<div style="border-bottom:2px solid #d4a843;padding-bottom:10px;margin-bottom:16px;">' +
       '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;">Betting Receipt · ' + esc(evName) + '</div>' +
-      (ticketRefs.length ? '<div style="font-size:28px;font-weight:900;color:#8F6E2A;letter-spacing:2px;line-height:1;">' + ticketRefs.join('  ') + '</div>' : '') +
       '<div style="font-size:15px;font-weight:700;margin-top:4px;">' + esc(td.bettorName) + '</div>' +
       '<div style="font-size:11px;color:#666;margin-top:2px;">' + now + '</div>' +
     '</div>' +
