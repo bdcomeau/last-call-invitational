@@ -559,7 +559,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v8.3</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v8.5</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -633,10 +633,9 @@ function syncStateFromRoot() {
   const ev = activeEvent();
   if (ev) {
     state.tournamentName = ev.name || '';
-    state.handlePct      = ev.handlePct  !== undefined ? ev.handlePct  : 3;
-    state.handleMode     = ev.handleMode || 'pct';
-    state.handleFlat     = ev.handleFlat !== undefined ? ev.handleFlat : 0;
     state.payoutMode     = ev.payoutMode || 'simplified';
+    // house take (handleMode/handlePct/handleFlat) stays in state — not loaded from event
+    // it is set directly by the UI controls on the Results tab
     // Deep copy arrays so state never shares references with the event object
     state.teams          = JSON.parse(JSON.stringify(ev.teams    || []));
     state.bets           = JSON.parse(JSON.stringify(ev.bets     || []));
@@ -645,7 +644,7 @@ function syncStateFromRoot() {
     state.nextTicketNum  = ev.nextTicketNum || 1;
   } else {
     state.teams = []; state.bets = []; state.bettors = []; state.placements = { p1:'', p2:'', p3:'' };
-    state.nextTicketNum = 1; state.handleMode = 'pct'; state.handleFlat = 0;
+    state.nextTicketNum = 1;
   }
 }
 
@@ -686,7 +685,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v8.3: migrate missing house take fields
+        // v8.5: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -827,8 +826,6 @@ function setActiveEvent(id) {
   const hs = document.getElementById('handle-slider');
   const hd = document.getElementById('handle-display');
   if (tn) tn.value = state.tournamentName || '';
-  if (hs) hs.value = state.handlePct || 3;
-  if (hd) hd.textContent = (state.handlePct || 3) + '%';
   updatePayoutModeUI();
   renderTeams();
   renderBettors();
@@ -2447,32 +2444,18 @@ function calcPayouts() {
 
   // Rounding guard: total payout must never exceed net pool
   const rawTotal = betResults.reduce((s,b) => s + b.payout, 0);
-  const netPool  = take === 0 ? totalCollected : Math.round(totalCollected * (1 - take) * 100) / 100;
+  const netPool  = take === 0 && _handleMode !== 'flat' ? totalCollected : Math.round((totalCollected - houseAmt) * 100) / 100;
   let scaledResults;
   if (rawTotal > netPool + 0.001) {
-    // Scale down if raw total exceeds pool (shouldn't happen but guard anyway)
     const scale = netPool / rawTotal;
-    scaledResults = betResults.map(b => ({ ...b, payout: Math.round(b.payout * scale * 100) / 100 }));
+    scaledResults = betResults.map(b => ({ ...b, payout: Math.round(b.payout * scale) })); // round to dollar
   } else {
-    // Round each payout to cents
-    scaledResults = betResults.map(b => ({ ...b, payout: Math.round(b.payout * 100) / 100 }));
-  }
-
-  // Fix cent-level rounding drift: after rounding, total may be off by a few cents.
-  // Adjust the largest non-zero payout to absorb the difference so books always balance.
-  const roundedTotal = scaledResults.reduce((s,b) => s + b.payout, 0);
-  const houseNet = take === 0 ? 0 : Math.round((totalCollected - netPool) * 100) / 100;
-  const targetPayout = Math.round((totalCollected - houseNet) * 100) / 100;
-  const drift = Math.round((roundedTotal - targetPayout) * 100); // in cents
-  if (drift !== 0) {
-    // Find largest winner to absorb the cent adjustment
-    const maxIdx = scaledResults.reduce((mi, b, i) => b.payout > scaledResults[mi].payout ? i : mi, 0);
-    scaledResults = scaledResults.map((b, i) => i === maxIdx
-      ? { ...b, payout: Math.round((b.payout - drift / 100) * 100) / 100 }
-      : b);
+    // Round each payout DOWN to nearest dollar — any leftover goes to house
+    scaledResults = betResults.map(b => ({ ...b, payout: Math.floor(b.payout) }));
   }
 
   const totalPayout   = scaledResults.reduce((s,b) => s + b.payout, 0);
+  // House retains the take PLUS any cents left over from dollar rounding
   const houseRetained = Math.round((totalCollected - totalPayout) * 100) / 100;
 
   return { betResults: scaledResults, pools, net, houseRetained, totalCollected, totalPayout, mode, handleMode: _handleMode, handleFlat: _handleFlat, handlePct: _handlePct };
@@ -2779,8 +2762,6 @@ async function importBets(input) {
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 load();
 document.getElementById('tournament-name').value = state.tournamentName || '';
-document.getElementById('handle-slider').value   = state.handlePct || 3;
-document.getElementById('handle-display').textContent = (state.handlePct || 3) + '%';
 updatePayoutModeUI();
 renderTeams();
 renderBettors();
