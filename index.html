@@ -577,7 +577,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v11.4</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v11.6</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -704,7 +704,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v11.4: migrate missing house take fields
+        // v11.6: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1980,16 +1980,23 @@ function shareTicket() {
   const fname = safeName + '-' + lastRef + '-' + grandTotal + '.html';  // e.g. Doug-Comeau-LCI-0042-80.html
   const file  = new File([blob], fname, { type: 'text/html' });
 
-  // If phone on file — open iMessage pre-filled then share file
+  // Build plain text version for SMS
+  let smsText = '🏌 ' + evName + ' — Betting Receipt\n';
+  smsText += 'Bettor: ' + td.bettorName + '\n';
+  ticketRefs.forEach(function(ref) {
+    const bets = byTicket[ref];
+    const sub  = bets.reduce(function(s,b){ return s+b.amount; },0);
+    smsText += '\nTicket: ' + ref + '\n';
+    bets.forEach(function(b) {
+      smsText += b.type.toUpperCase() + '  ' + teamName(b.teamId) + '  $' + b.amount + '\n';
+    });
+    smsText += 'Subtotal: $' + sub + '\n';
+  });
+  smsText += '\nTOTAL: $' + grandTotal + '\nGood luck! 🍀';
+
+  // If phone on file — open iMessage pre-filled with text receipt in body
   if (phone) {
-    window.open('sms:' + phone, '_blank');
-    setTimeout(function() {
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], title: evName + ' Receipt — ' + td.bettorName });
-      } else if (navigator.share) {
-        navigator.share({ title: evName + ' Receipt — ' + td.bettorName, url: URL.createObjectURL(blob) });
-      }
-    }, 600);
+    window.open('sms:' + phone + '&body=' + encodeURIComponent(smsText), '_blank');
   } else {
     // No phone — share file (AirDrop → Files, Mail, etc.)
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -2036,12 +2043,19 @@ function buildReceiptHTML(td) {
   const ev     = activeEvent();
   const evName = ev ? ev.name : (state.tournamentName || 'Last Call Invitational');
   const now    = new Date().toLocaleString('en-CA', { dateStyle:'medium', timeStyle:'short' });
+  // Always include the current ticket ref — even if state lookup misses it
   const allBets = state.bets.filter(function(b) { return b.bettorId === td.bettorId && b.ticketRef; });
   const byTicket = {};
   allBets.forEach(function(b) {
     if (!byTicket[b.ticketRef]) byTicket[b.ticketRef] = [];
     byTicket[b.ticketRef].push(b);
   });
+  // Ensure current ticket is always present using td.ref and td.bets as fallback
+  if (td.ref && !byTicket[td.ref]) {
+    byTicket[td.ref] = (td.bets || []).map(function(b) {
+      return { type: b.type, teamId: null, _teamName: b.teamName, amount: b.amount };
+    });
+  }
   const ticketRefs = Object.keys(byTicket).sort();
   let grandTotal = 0;
   ticketRefs.forEach(function(ref) { grandTotal += byTicket[ref].reduce(function(s,b){ return s+b.amount; },0); });
@@ -2050,9 +2064,10 @@ function buildReceiptHTML(td) {
     const bets = byTicket[ref];
     const sub  = bets.reduce(function(s,b){ return s+b.amount; },0);
     const rows = bets.map(function(b) {
+      const tname = b._teamName || teamName(b.teamId);
       return '<tr>' +
         '<td style="padding:5px 10px;border-bottom:1px solid #eee;font-weight:700;color:' + (typeClr[b.type]||'#333') + ';font-size:11px;">' + b.type.toUpperCase() + '</td>' +
-        '<td style="padding:5px 10px;border-bottom:1px solid #eee;font-size:12px;">' + esc(teamName(b.teamId)) + '</td>' +
+        '<td style="padding:5px 10px;border-bottom:1px solid #eee;font-size:12px;">' + esc(tname) + '</td>' +
         '<td style="padding:5px 10px;border-bottom:1px solid #eee;text-align:right;font-size:12px;">$' + b.amount + '</td>' +
       '</tr>';
     }).join('');

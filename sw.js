@@ -1,5 +1,5 @@
-// Last Call Invitational — Service Worker v11.4
-const CACHE = 'lci-v11.4';
+// Last Call Invitational — Service Worker v11.6
+const CACHE = 'lci-v11.6';
 const ASSETS = ['/last-call-invitational/','/last-call-invitational/index.html','/last-call-invitational/manifest.json'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))); self.clients.claim(); });
