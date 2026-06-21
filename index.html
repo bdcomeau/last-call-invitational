@@ -567,7 +567,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v12.8</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v12.9</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -694,7 +694,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v12.8: migrate missing house take fields
+        // v12.9: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1538,17 +1538,24 @@ function renderBettors() {
 function renderBetDropdowns() {
   const bSel = document.getElementById('bet-bettor');
   const tSel = document.getElementById('bet-team');
-  if (!bSel || !tSel) return;
-  const curB = bSel.value, curT = tSel.value;
   const bettors = state.bettors || [];
   const teams   = state.teams   || [];
-  bSel.innerHTML = '<option value="">— Select Bettor —</option>' +
-    [...bettors].sort((a,b) => a.name.localeCompare(b.name))
-    .map(b => '<option value="' + b.id + '"' + (b.id===curB?' selected':'') + '>' + esc(b.name) + '</option>').join('');
-  tSel.innerHTML = '<option value="FIELD">🌐 Field — any team in this position</option>' +
-    [...teams].sort((a,b) => a.name.localeCompare(b.name))
-    .map(t => '<option value="' + t.id + '"' + (t.id===curT?' selected':'') + '>' + esc(t.name) + '</option>').join('');
-  if (curT && curT !== 'FIELD') tSel.value = curT;
+
+  if (bSel) {
+    const curB = bSel.value;
+    bSel.innerHTML = '<option value="">— Select Bettor —</option>' +
+      [...bettors].sort((a,b) => a.name.localeCompare(b.name))
+      .map(b => '<option value="' + b.id + '"' + (b.id===curB?' selected':'') + '>' + esc(b.name) + '</option>').join('');
+  }
+
+  if (tSel) {
+    const curT = tSel.value;
+    tSel.innerHTML = '<option value="FIELD">🌐 Field — any team in this position</option>' +
+      [...teams].sort((a,b) => a.name.localeCompare(b.name))
+      .map(t => '<option value="' + t.id + '"' + (t.id===curT?' selected':'') + '>' + esc(t.name) + '</option>').join('');
+    if (curT && curT !== 'FIELD') tSel.value = curT;
+  }
+
   const tickSel = document.getElementById('ticket-bettor');
   if (tickSel) {
     const curTick = tickSel.value;
