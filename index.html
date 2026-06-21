@@ -580,7 +580,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v12.1</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v12.2</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -707,7 +707,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v12.1: migrate missing house take fields
+        // v12.2: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1362,6 +1362,11 @@ function updatePayoutModeUI() {
   if (trackLabel) trackLabel.style.border = mode === 'racetrack'  ? '1px solid #D4A843' : '1px solid transparent';
 }
 
+function isSettled() {
+  const ev = activeEvent();
+  return !!(ev && ev.placements && ev.placements.p1 && ev.placements.p2 && ev.placements.p3);
+}
+
 // ─── Boot & event listeners ─────────────────────────────────────────────────
 document.getElementById('tournament-name').addEventListener('input', function() {
   state.tournamentName = this.value;
@@ -1684,6 +1689,7 @@ function updateAmountHint() {
 }
 
 function addBet() {
+  if (isSettled()) { alert('⛔ Bets are closed — winners have already been set for this event.'); return; }
   const bettorId = document.getElementById('bet-bettor').value;
   const teamId   = document.getElementById('bet-team').value;
   const type     = document.getElementById('bet-type').value;
@@ -2264,6 +2270,7 @@ function updateEntryTotals() {
 }
 
 function submitEntrySheet() {
+  if (isSettled()) { alert('⛔ Bets are closed — winners have already been set for this event.'); return; }
   const sel      = document.getElementById('entry-bettor');
   const bettorId = sel ? sel.value : '';
   if (!bettorId) { alert('Please select a bettor.'); return; }
@@ -2359,6 +2366,7 @@ function closeReview() {
 }
 
 function confirmCash() {
+  if (isSettled()) { alert('⛔ Bets are closed — winners have already been set for this event.'); return; }
   if (!_pendingEntry) return;
   const { betsToAdd, bettor, grand, bettorId } = _pendingEntry;
   _pendingEntry = null;
@@ -3058,6 +3066,7 @@ async function importBettors(input) {
 }
 
 async function importBets(input) {
+  if (isSettled()) { alert('⛔ Bets are closed — winners have already been set for this event.'); input.value=''; return; }
   const file = input.files[0];
   if (!file) return;
 
