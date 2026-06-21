@@ -438,33 +438,7 @@
         </div>
       </div>
 
-      <div class="card">
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <div class="field"><label>Bettor</label>
-            <select id="bet-bettor"><option value="">— Select Bettor —</option></select>
-          </div>
-          <div class="field"><label>Team</label>
-            <select id="bet-team" onchange="updateAmountHint()"><option value="FIELD">🌐 Field — any team in this position</option></select>
-          </div>
-          <div class="field"><label>Bet Type</label>
-            <select id="bet-type" onchange="updateAmountHint()">
-              <option value="win">WIN — must finish 1st</option>
-              <option value="place">PLACE — must finish 1st or 2nd</option>
-              <option value="show">SHOW — must finish 1st, 2nd, or 3rd</option>
-              <option value="win-place">WIN + PLACE — collect 2× amount</option>
-              <option value="win-place-show">WIN + PLACE + SHOW — collect 3× amount</option>
-            </select>
-          </div>
-          <div class="field"><label>Amount per bet ($)</label><input type="number" id="bet-amount" placeholder="50" min="1" oninput="updateAmountHint()" /></div>
-          <div id="amount-hint" style="font-size:12px;color:#7A9E89;text-align:center;display:none;"></div>
-          <button class="btn btn-primary" onclick="addBet()">Place Bet</button>
-          <div class="divider"></div>
-          <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import bets from spreadsheet —</div>
-          <div style="font-size:10px;color:#7A9E89;text-align:center;line-height:1.6;">Save as <strong style="color:#EDE8DC;">CSV</strong> from Excel/Numbers first<br/>4 columns: Bettor · Team · Type (W P S WP WPS) · Amount</div>
-          <input type="file" id="import-bets-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBets(this)" />
-          <div id="import-bets-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
-        </div>
-      </div>
+<!-- Bet entry moved to Bet Entry tab -->
       <div class="card" id="wagers-card" style="display:none;">
         <input type="text" class="bare" id="wager-search" placeholder="🔍  Filter wagers…" oninput="renderWagers()" style="margin-bottom:10px;" />
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;" id="wagers-count"></div>
@@ -580,13 +554,13 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v12.3</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v12.6</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
     <button onclick="showTab('setup')"><span class="tab-icon">⚙️</span><span class="tab-label">SETUP</span></button>
     <button onclick="showTab('bettors')"><span class="tab-icon">👥</span><span class="tab-label">BETTORS</span></button>
-    <button onclick="showTab('entry')"><span class="tab-icon">📋</span><span class="tab-label">ENTRY</span></button>
+    <button onclick="showTab('entry')"><span class="tab-icon">📋</span><span class="tab-label">BET ENTRY</span></button>
     <button onclick="showTab('wagers')"><span class="tab-icon">🎰</span><span class="tab-label">WAGERS</span></button>
     <button onclick="showTab('placements')"><span class="tab-icon">🏆</span><span class="tab-label">PLACES</span></button>
     <button onclick="showTab('results')"><span class="tab-icon">📋</span><span class="tab-label">RESULTS</span></button>
@@ -707,7 +681,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v12.3: migrate missing house take fields
+        // v12.6: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
