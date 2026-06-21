@@ -563,7 +563,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v7.9</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v8.0</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -637,7 +637,9 @@ function syncStateFromRoot() {
   const ev = activeEvent();
   if (ev) {
     state.tournamentName = ev.name || '';
-    state.handlePct      = ev.handlePct || 3;
+    state.handlePct      = ev.handlePct  !== undefined ? ev.handlePct  : 3;
+    state.handleMode     = ev.handleMode || 'pct';
+    state.handleFlat     = ev.handleFlat !== undefined ? ev.handleFlat : 0;
     state.payoutMode     = ev.payoutMode || 'simplified';
     // Deep copy arrays so state never shares references with the event object
     state.teams          = JSON.parse(JSON.stringify(ev.teams    || []));
@@ -647,7 +649,7 @@ function syncStateFromRoot() {
     state.nextTicketNum  = ev.nextTicketNum || 1;
   } else {
     state.teams = []; state.bets = []; state.bettors = []; state.placements = { p1:'', p2:'', p3:'' };
-    state.nextTicketNum = 1;
+    state.nextTicketNum = 1; state.handleMode = 'pct'; state.handleFlat = 0;
   }
 }
 
