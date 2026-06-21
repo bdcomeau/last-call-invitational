@@ -567,7 +567,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v12.9</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v13.0</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -598,8 +598,7 @@
   <div id="ticket-overlay">
     <div id="ticket-overlay-btns">
       <button onclick="closeTicket()" style="flex:1;padding:12px;background:#E05252;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">✕ Close</button>
-      <button onclick="shareTicket()" style="flex:1;padding:12px;background:#3DB86E;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">📤 Share</button>
-      <button onclick="printTicketOverlay()" style="flex:1;padding:12px;background:#D4A843;color:#111;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">🖨 Print</button>
+      <button onclick="shareTicket()" style="flex:2;padding:12px;background:#D4A843;color:#111;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">📤 Share / Print</button>
     </div>
     <div id="ticket-overlay-inner">
       <div id="ticket-overlay-body"></div>
@@ -694,7 +693,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v12.9: migrate missing house take fields
+        // v13.0: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -2050,20 +2049,28 @@ function shareTicket() {
 
   smsText += '\nTOTAL: $' + grandTotal + '\nGood luck! 🍀';
 
-  // Phone on file → iMessage with text body
-  if (phone) {
-    window.open('sms:' + phone + '&body=' + encodeURIComponent(smsText), '_blank');
-  } else {
-    // No phone → share file (AirDrop → Files, Mail, etc.)
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: evName + ' Receipt — ' + td.bettorName })
-        .catch(function(e) { if (e.name !== 'AbortError') openReceiptTab(receiptHTML); });
-    } else if (navigator.share) {
-      navigator.share({ title: evName + ' Receipt — ' + td.bettorName, url: URL.createObjectURL(blob) })
-        .catch(function(e) { if (e.name !== 'AbortError') openReceiptTab(receiptHTML); });
+  // Always use native share sheet — user picks iMessage, AirDrop, Print, Mail, etc.
+  const shareData = { title: evName + ' Receipt — ' + td.bettorName, text: smsText };
+
+  if (navigator.share) {
+    // Try sharing the file first (shows in Files, AirDrop etc.)
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: evName + ' Receipt — ' + td.bettorName, text: smsText })
+        .catch(function(e) {
+          if (e.name !== 'AbortError') {
+            // Fall back to text-only share
+            navigator.share(shareData).catch(function() { openReceiptTab(receiptHTML); });
+          }
+        });
     } else {
-      openReceiptTab(receiptHTML);
+      // Text-only share (still shows iMessage, Mail, etc.)
+      navigator.share(shareData).catch(function(e) {
+        if (e.name !== 'AbortError') openReceiptTab(receiptHTML);
+      });
     }
+  } else {
+    // No share API — open in new tab so they can print/save
+    openReceiptTab(receiptHTML);
   }
 }
 
@@ -2445,8 +2452,7 @@ function showTicketConfirmation(ticketRef, bettor, grand, bettorId) {
         '<div style="font-size:13px;color:#E05252;font-weight:700;">✍️ Write ' + ticketRef + ' on the paper betting sheet before handing back</div>' +
       '</div>' +
       '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' +
-        '<button class="btn btn-primary" style="font-size:14px;padding:12px 20px;" onclick="shareTicket()">📤 Share Receipt</button>' +
-        '<button class="btn btn-primary" style="font-size:14px;padding:12px 20px;" onclick="printTicketFromConfirm(&quot;' + (bettor?bettor.id:'') + '&quot;)">🖨 Print Receipt</button>' +
+        '<button class="btn btn-primary" style="font-size:14px;padding:12px 20px;" onclick="shareTicket()">📤 Share / Print Receipt</button>' +
         '<button class="btn btn-ghost" style="font-size:14px;padding:12px 20px;" onclick="closeTicketConfirm()">✓ Done</button>' +
       '</div>' +
     '</div>';
