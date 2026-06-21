@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=auto" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="Last Call" />
@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { background: #0E1A12; color: #EDE8DC; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+    html, body { background: #0E1A12; color: #EDE8DC; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; height: 100%; }
     button { cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; }
     input, select { font-family: inherit; }
     ::-webkit-scrollbar { width: 3px; }
@@ -25,14 +25,14 @@
 
     /* Layout — simple reliable iOS approach */
     #app { max-width: 620px; margin: 0 auto; }
-    #header { background: #162219; border-bottom: 1px solid #2B4033; padding: calc(env(safe-area-inset-top, 14px) + 14px) 18px 10px; }
+    #header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: #162219; border-bottom: 1px solid #2B4033; padding: calc(env(safe-area-inset-top, 50px) + 8px) 18px 10px; }
     #header .eyebrow { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; color: #8F6E2A; letter-spacing: 3px; }
     #header .title { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 900; color: #D4A843; line-height: 1.1; }
     #header .stats { font-size: 11px; color: #7A9E89; margin-top: 3px; display: flex; gap: 12px; flex-wrap: wrap; }
     #header .stats .pool-amt { color: #D4A843; }
     #header .stats .places-ok { color: #3DB86E; }
 
-    #content { padding: 18px 14px 40px; }
+    #content { padding: 18px 14px 40px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
     #tabbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 999;
               background: #162219; border-top: 1px solid #2B4033; display: flex;
@@ -155,7 +155,7 @@
 
     @media print {
       #header, #tabbar, .btn-ghost, .btn-danger, .no-print, #ticket-overlay { display: none !important; }
-      #content { padding: 0; }
+      #content { padding: 0; margin-top: 0; height: auto; overflow: visible; }
       .screen { display: flex !important; }
       .screen:not(.active) { display: none !important; }
       body { background: #fff !important; color: #000 !important; }
@@ -559,7 +559,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v10.0</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v10.2</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -685,7 +685,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v10.0: migrate missing house take fields
+        // v10.2: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -2757,7 +2757,22 @@ async function importBets(input) {
   input.value = '';
 }
 
-// ─── Boot ─────────────────────────────────────────────────────────────────────
+// ─── Layout: fit content between fixed header and fixed tabbar ────────────────
+function applyLayout() {
+  const header  = document.getElementById('header');
+  const content = document.getElementById('content');
+  const tabbar  = document.getElementById('tabbar');
+  if (!header || !content || !tabbar) return;
+  const hh = header.offsetHeight;
+  const th = tabbar.offsetHeight;
+  content.style.marginTop = hh + 'px';
+  content.style.height    = 'calc(100vh - ' + hh + 'px - ' + th + 'px)';
+}
+window.addEventListener('load',   applyLayout);
+window.addEventListener('resize', applyLayout);
+// Also run after fonts/images settle
+setTimeout(applyLayout, 100);
+setTimeout(applyLayout, 500);
 load();
 document.getElementById('tournament-name').value = state.tournamentName || '';
 updatePayoutModeUI();
