@@ -576,7 +576,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v13.5</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v13.6</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -702,7 +702,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v13.5: migrate missing house take fields
+        // v13.6: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -762,6 +762,7 @@ function showTab(tab) {
     if (tab === 'results')    renderResults();
     // Reset persistent print buttons when switching away from their tabs
     if (tab !== 'results') {
+      renderResults._houseTakeInitialized = false; // reset so house take starts at 0% next visit
       const lb = document.getElementById('label-print-btn');
       if (lb) { lb.style.display = 'none'; lb.onclick = null; }
     }
@@ -836,6 +837,7 @@ function setActiveEvent(id) {
   // Reset print buttons — they're event-specific
   const lb = document.getElementById('label-print-btn');
   if (lb) { lb.style.display = 'none'; lb.onclick = null; }
+  renderResults._houseTakeInitialized = false;
   const sb = document.getElementById('sheet-print-btn');
   if (sb) { sb.style.display = 'none'; sb.onclick = null; }
   updateHeader();
@@ -1358,7 +1360,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v13.5';
+const APP_VERSION = 'v13.6';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -2920,11 +2922,13 @@ function calcPayouts() {
 }
 
 function renderResults() {
-  // Reset house take to 0% each time Results renders — user sets it fresh each time
-  // This prevents stale state.handlePct (default 3) from affecting calculations
-  state.handleMode = 'pct';
-  state.handlePct  = 0;
-  state.handleFlat = 0;
+  // Reset house take to 0% only when first opening the tab (not on slider/button changes)
+  if (!renderResults._houseTakeInitialized) {
+    state.handleMode = 'pct';
+    state.handlePct  = 0;
+    state.handleFlat = 0;
+    renderResults._houseTakeInitialized = true;
+  }
   _applyHouseTakeUI();
   // Always reset the print buttons when rendering results for any event
   const labelBtn = document.getElementById('label-print-btn');
