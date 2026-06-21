@@ -577,7 +577,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v11.1</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v11.4</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -704,7 +704,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v11.1: migrate missing house take fields
+        // v11.4: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1976,7 +1976,8 @@ function shareTicket() {
   const receiptHTML = buildReceiptHTML(td);
   const blob = new Blob([receiptHTML], { type: 'text/html' });
   const lastRef = ticketRefs[ticketRefs.length - 1] || 'receipt';
-  const fname = lastRef + '.html';  // e.g. LCI-0042.html
+  const safeName = (td.bettorName || 'bettor').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  const fname = safeName + '-' + lastRef + '-' + grandTotal + '.html';  // e.g. Doug-Comeau-LCI-0042-80.html
   const file  = new File([blob], fname, { type: 'text/html' });
 
   // If phone on file — open iMessage pre-filled then share file
