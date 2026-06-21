@@ -580,7 +580,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v12.2</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v12.3</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -707,7 +707,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v12.2: migrate missing house take fields
+        // v12.3: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -2003,23 +2003,24 @@ function shareTicket() {
   const bettor = state.bettors.find(function(b) { return b.id === td.bettorId; });
   const phone  = bettor ? (bettor.phone || '').replace(/\D/g,'') : '';
 
-  // Derive ticket groupings from state (all tickets for this bettor)
-  const allBets = state.bets.filter(function(b) { return b.bettorId === td.bettorId && b.ticketRef; });
+  // Derive ticket groupings — first try bets with ticketRef
+  const allBets = state.bets.filter(function(b) { return b.bettorId === td.bettorId; });
   const byTicket = {};
   allBets.forEach(function(b) {
-    if (!byTicket[b.ticketRef]) byTicket[b.ticketRef] = [];
-    byTicket[b.ticketRef].push(b);
+    const key = b.ticketRef || '__unref__';
+    if (!byTicket[key]) byTicket[key] = [];
+    byTicket[key].push(b);
   });
-  // Ensure current ticket always present
-  if (td.ref && !byTicket[td.ref]) {
-    byTicket[td.ref] = (td.bets || []).map(function(b) {
+  // Ensure current ticket always present via td fallback
+  if (td.ref && !byTicket[td.ref] && td.bets && td.bets.length) {
+    byTicket[td.ref] = td.bets.map(function(b) {
       return { type: b.type, teamId: null, _teamName: b.teamName || b._teamName, amount: b.amount };
     });
   }
-  const ticketRefs = Object.keys(byTicket).sort();
-  const grandTotal = ticketRefs.reduce(function(s, ref) {
-    return s + byTicket[ref].reduce(function(s2, b) { return s2 + b.amount; }, 0);
-  }, 0);
+  const ticketRefs = Object.keys(byTicket).filter(k => k !== '__unref__').sort();
+  const unrefBets  = byTicket['__unref__'] || [];
+
+  const grandTotal = allBets.reduce(function(s, b) { return s + b.amount; }, 0) || td.total || 0;
 
   const receiptHTML = buildReceiptHTML(td);
   const blob    = new Blob([receiptHTML], { type: 'text/html' });
@@ -2031,16 +2032,28 @@ function shareTicket() {
   // Build plain text for SMS
   let smsText = '🏌 ' + evName + ' — Betting Receipt\n';
   smsText += 'Bettor: ' + td.bettorName + '\n';
-  ticketRefs.forEach(function(ref) {
-    const bets = byTicket[ref];
-    const sub  = bets.reduce(function(s,b){ return s+b.amount; },0);
-    smsText += '\nTicket: ' + ref + '\n';
-    bets.forEach(function(b) {
+
+  if (ticketRefs.length) {
+    ticketRefs.forEach(function(ref) {
+      const bets = byTicket[ref];
+      const sub  = bets.reduce(function(s,b){ return s+b.amount; },0);
+      smsText += '\nTicket: ' + ref + '\n';
+      bets.forEach(function(b) {
+        const tname = b._teamName || teamName(b.teamId);
+        smsText += b.type.toUpperCase() + '  ' + tname + '  $' + b.amount + '\n';
+      });
+      smsText += 'Subtotal: $' + sub + '\n';
+    });
+  }
+
+  if (unrefBets.length) {
+    smsText += '\nBets:\n';
+    unrefBets.forEach(function(b) {
       const tname = b._teamName || teamName(b.teamId);
       smsText += b.type.toUpperCase() + '  ' + tname + '  $' + b.amount + '\n';
     });
-    smsText += 'Subtotal: $' + sub + '\n';
-  });
+  }
+
   smsText += '\nTOTAL: $' + grandTotal + '\nGood luck! 🍀';
 
   // Phone on file → iMessage with text body
