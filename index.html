@@ -559,7 +559,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v8.6</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v8.8</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -685,7 +685,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v8.6: migrate missing house take fields
+        // v8.8: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -2329,6 +2329,7 @@ function calcPayouts() {
   const _handleFlat = state.handleFlat !== undefined ? state.handleFlat : 0;
   // Payout mode read directly from active event — not state (state may be stale)
   const _payoutMode = ev ? (ev.payoutMode || 'simplified') : (state.payoutMode || 'simplified');
+  console.log('[calcPayouts] ev.name=', ev&&ev.name, 'ev.payoutMode=', ev&&ev.payoutMode, '_payoutMode=', _payoutMode);
 
   const { p1, p2, p3 } = _placements;
   const placements = [p1, p2, p3];
@@ -2343,23 +2344,19 @@ function calcPayouts() {
   // Calculate house amount based on mode
   let houseAmt;
   if (_handleMode === 'flat') {
-    // Flat dollar take — distribute proportionally across pools
     houseAmt = Math.min(_handleFlat, totalCollected);
   } else {
-    // Percentage take
     houseAmt = take === 0 ? 0 : Math.round(totalCollected * take * 100) / 100;
   }
 
-  // Net pools after house take — distribute house proportionally across WIN/PLACE/SHOW
+  // Net pools after house take — floor each to whole dollars, remainder goes to house
   const netTotal = totalCollected - houseAmt;
   const net = totalCollected > 0 ? {
-    win:   Math.round(pools.win   / totalCollected * netTotal * 100) / 100,
-    place: Math.round(pools.place / totalCollected * netTotal * 100) / 100,
-    show:  Math.round(pools.show  / totalCollected * netTotal * 100) / 100,
+    win:   Math.floor(pools.win   / totalCollected * netTotal),
+    place: Math.floor(pools.place / totalCollected * netTotal),
+    show:  Math.floor(pools.show  / totalCollected * netTotal),
   } : { win: 0, place: 0, show: 0 };
-  // Absorb any rounding drift in win pool
-  const netDrift = Math.round((net.win + net.place + net.show - netTotal) * 100);
-  if (netDrift !== 0) net.win = Math.round((net.win - netDrift/100) * 100) / 100;
+  // Any sub-dollar remainder from flooring goes to house — no drift correction needed
 
   const covers = (bet, pos) => bet.teamId === 'FIELD' || bet.teamId === placements[pos];
 
@@ -2445,7 +2442,7 @@ function calcPayouts() {
 
   // Rounding guard: total payout must never exceed net pool
   const rawTotal = betResults.reduce((s,b) => s + b.payout, 0);
-  const netPool  = take === 0 && _handleMode !== 'flat' ? totalCollected : Math.round((totalCollected - houseAmt) * 100) / 100;
+  const netPool  = Math.floor(net.win + net.place + net.show);
   let scaledResults;
   if (rawTotal > netPool + 0.001) {
     const scale = netPool / rawTotal;
