@@ -685,7 +685,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v15.5</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v15.7</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -809,7 +809,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v15.5: migrate missing house take fields
+        // v15.7: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -954,6 +954,68 @@ function setActiveEvent(id) {
   renderEvents();
 }
 
+function duplicateEvent(id) {
+  const src = root.events.find(e => e.id === id);
+  if (!src) return;
+
+  const newName = prompt('Name for the duplicate event:', src.name + ' (Copy)');
+  if (!newName || !newName.trim()) return;  // cancelled or blank
+
+  // Save current state first
+  syncRootFromState();
+  save();
+
+  // Deep clone the source event
+  const clone = JSON.parse(JSON.stringify(src));
+
+  // Give the clone a new identity
+  clone.id          = uid();
+  clone.name        = newName.trim();
+  clone.createdAt   = new Date().toISOString();
+  clone.archived    = false;
+  clone.nextTicketNum = src.nextTicketNum || 1;
+
+  // Re-issue new IDs for all bettors, teams, and bets so they're independent
+  const bettorIdMap = {};
+  clone.bettors = (src.bettors || []).map(function(b) {
+    const newId = uid();
+    bettorIdMap[b.id] = newId;
+    return Object.assign({}, b, { id: newId });
+  });
+
+  const teamIdMap = {};
+  clone.teams = (src.teams || []).map(function(t) {
+    const newId = uid();
+    teamIdMap[t.id] = newId;
+    return Object.assign({}, t, { id: newId });
+  });
+
+  clone.bets = (src.bets || []).map(function(b) {
+    return Object.assign({}, b, {
+      id:       uid(),
+      bettorId: bettorIdMap[b.bettorId] || b.bettorId,
+      teamId:   (b.teamId === 'FIELD') ? 'FIELD' : (teamIdMap[b.teamId] || b.teamId),
+    });
+  });
+
+  // Remap placements to new team IDs
+  const p = src.placements || {};
+  clone.placements = {
+    p1: p.p1 ? (teamIdMap[p.p1] || p.p1) : '',
+    p2: p.p2 ? (teamIdMap[p.p2] || p.p2) : '',
+    p3: p.p3 ? (teamIdMap[p.p3] || p.p3) : '',
+  };
+
+  root.events.push(clone);
+  root.activeEventId = clone.id;
+  syncStateFromRoot();
+  save();
+  updateActiveEventSetup();
+  renderEvents();
+  updateHeader();
+  showTab('events');
+}
+
 function archiveEvent(id) {
   const ev = root.events.find(e => e.id === id);
   if (!ev) return;
@@ -1058,6 +1120,7 @@ function renderEvents() {
           (!isArchived && !isActive ? '<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="setActiveEvent(&quot;' + ev.id + '&quot;)">Open</button>' : '') +
           (!isArchived && isActive  ? '<button class="btn btn-danger" style="font-size:11px;padding:5px 10px;" onclick="archiveEvent(&quot;' + ev.id + '&quot;)">Archive</button>' : '') +
           (hasResults ? '<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="viewArchivedResults(&quot;' + ev.id + '&quot;)">Results</button>' : '') +
+          '<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="duplicateEvent(&quot;' + ev.id + '&quot;)">⧉ Duplicate</button>' +
           '<button class="btn btn-danger" style="font-size:11px;padding:5px 10px;" onclick="deleteEvent(&quot;' + ev.id + '&quot;)">🗑 Delete</button>' +
         '</div>' +
       '</div>' +
@@ -1482,7 +1545,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v15.5';
+const APP_VERSION = 'v15.7';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
