@@ -349,11 +349,18 @@
         <div style="font-size:10px;color:#7A9E89;margin-top:6px;">Select a bettor to load their entry grid</div>
       </div>
 
-      <!-- 2. Entry grid — appears directly below bettor when selected -->
+      <!-- 2. Submitted tickets — shown directly below bettor -->
+      <div class="card" id="entry-tickets-card" style="display:none;">
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">SUBMITTED TICKETS</div>
+        <div id="entry-tickets-list"></div>
+      </div>
+
+      <!-- 3. Enter New Bet grid -->
       <div class="card" id="entry-grid-card" style="display:none;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <div>
-            <div style="font-size:13px;font-weight:700;" id="entry-bettor-name"></div>
+            <div style="font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:700;color:#D4A843;letter-spacing:1px;">ENTER NEW BET</div>
+            <div style="font-size:12px;font-weight:700;" id="entry-bettor-name"></div>
             <div style="font-size:10px;color:#7A9E89;" id="entry-ticket-ref"></div>
           </div>
           <button class="btn btn-primary" onclick="submitEntrySheet()" style="font-size:13px;padding:8px 14px;">✓ Submit Bets</button>
@@ -377,12 +384,6 @@
           <div style="font-size:12px;font-weight:700;color:#B07FDE;text-align:center;" id="entry-total-show">$0</div>
         </div>
         <div style="text-align:right;font-size:13px;font-weight:700;color:#D4A843;padding:4px;" id="entry-grand-total">Grand Total: $0.00</div>
-      </div>
-
-      <!-- 3. Submitted tickets for this bettor -->
-      <div class="card" id="entry-tickets-card" style="display:none;">
-        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">SUBMITTED TICKETS</div>
-        <div id="entry-tickets-list"></div>
       </div>
 
       <!-- 4. Print Sheets — always at bottom -->
@@ -577,7 +578,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v14.4</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v14.6</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -703,7 +704,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v14.4: migrate missing house take fields
+        // v14.6: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1360,7 +1361,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v14.4';
+const APP_VERSION = 'v14.6';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -2404,13 +2405,24 @@ function buildReceiptHTML(td) {
 // ─── ENTRY SHEET ─────────────────────────────────────────────────────────────
 // Generates a unique ticket reference number for the active event
 function genTicketRef() {
-  const ev = activeEvent();
-  if (!ev) return 'LCI-0001';
+  const ev   = activeEvent();
+  if (!ev) return 'LCI-' + new Date().getFullYear() + '-0001';
+  const year = new Date(ev.createdAt || Date.now()).getFullYear();
   if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-  const num = String(ev.nextTicketNum).padStart(4, '0');
-  ev.nextTicketNum++;
-  state.nextTicketNum = ev.nextTicketNum; // keep state in sync
-  return 'LCI-' + num;
+
+  // Get all existing ticket refs for this event to guarantee uniqueness
+  const usedRefs = new Set((ev.bets || []).map(b => b.ticketRef).filter(Boolean));
+
+  let num, ref, attempts = 0;
+  do {
+    num = String(ev.nextTicketNum).padStart(4, '0');
+    ref = 'LCI-' + year + '-' + num;
+    ev.nextTicketNum++;
+    attempts++;
+  } while (usedRefs.has(ref) && attempts < 10000);
+
+  state.nextTicketNum = ev.nextTicketNum;
+  return ref;
 }
 
 function loadEntryTab() {
@@ -2448,7 +2460,8 @@ function loadEntrySheet() {
   // Show pending ticket ref (will be assigned on submit)
   const ev = activeEvent();
   const nextNum = ev ? (ev.nextTicketNum || 1) : 1;
-  if (refEl) refEl.textContent = 'Next ticket #: LCI-' + String(nextNum).padStart(4,'0');
+  const _year1 = new Date(ev ? (ev.createdAt || Date.now()) : Date.now()).getFullYear();
+  if (refEl) refEl.textContent = 'Next ticket #: LCI-' + _year1 + '-' + String(nextNum).padStart(4,'0');
 
   // Build entry rows
   const rows = document.getElementById('entry-rows');
@@ -2672,7 +2685,8 @@ function confirmCash() {
   const ev2 = activeEvent();
   const nextNum2 = ev2 ? (ev2.nextTicketNum || 1) : 1;
   const refEl = document.getElementById('entry-ticket-ref');
-  if (refEl) refEl.textContent = 'Next ticket #: LCI-' + String(nextNum2).padStart(4,'0');
+  const _year2 = new Date(ev ? (ev.createdAt || Date.now()) : Date.now()).getFullYear();
+  if (refEl) refEl.textContent = 'Next ticket #: LCI-' + _year2 + '-' + String(nextNum2).padStart(4,'0');
 
   // Show ticket number prominently so operator can write it on the paper sheet
   showTicketConfirmation(ticketRef, bettor, grand, bettorId);
