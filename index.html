@@ -582,7 +582,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v16.3</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v16.4</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -706,7 +706,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v16.3: migrate missing house take fields
+        // v16.4: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1442,7 +1442,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v16.3';
+const APP_VERSION = 'v16.4';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -1500,10 +1500,14 @@ function isSettled() {
 }
 
 // ─── Boot & event listeners ─────────────────────────────────────────────────
-document.getElementById('tournament-name').addEventListener('input', function() {
-  state.tournamentName = this.value;
-  save(); updateHeader();
-});
+(function() {
+  const tn = document.getElementById('tournament-name');
+  if (tn) tn.addEventListener('input', function() {
+    state.tournamentName = this.value;
+    const ev = activeEvent(); if (ev) ev.name = this.value;
+    save(); updateHeader();
+  });
+})();
 
 // ─── HOUSE TAKE (Results tab) ─────────────────────────────────────────────────
 function setTakeMode(mode) {
@@ -2166,42 +2170,6 @@ function printWagersReport() {
   setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
 }
 
-
-  const card  = document.getElementById('wagers-card');
-  const list  = document.getElementById('wagers-list');
-  const count = document.getElementById('wagers-count');
-  if (!state.bets.length) { card.style.display = 'none'; return; }
-  card.style.display = '';
-  const search = (document.getElementById('wager-search').value || '').toLowerCase();
-
-  // Group combo bets together by comboGroupId; singles stand alone
-  const seen = new Set();
-  const groups = [];
-  [...state.bets].reverse().forEach(b => {
-    if (b.comboGroupId) {
-      if (!seen.has(b.comboGroupId)) {
-        seen.add(b.comboGroupId);
-        const legs = state.bets.filter(x => x.comboGroupId === b.comboGroupId);
-        groups.push({ isCombo: true, legs, rep: legs[0], total: legs.reduce((s,x)=>s+x.amount,0), comboType: b.combo });
-      }
-    } else {
-      groups.push({ isCombo: false, legs: [b], rep: b, total: b.amount, comboType: null });
-    }
-  });
-
-  const filtered = groups.filter(g => {
-    if (!search) return true;
-    const bn = (bettorById(g.rep.bettorId)?.name||'').toLowerCase();
-    const tn  = teamName(g.rep.teamId).toLowerCase();
-    const ref = (g.rep.ticketRef || '').toLowerCase();
-    return bn.includes(search) || tn.includes(search) || (g.comboType||g.rep.type).includes(search) || ref.includes(search);
-  }).sort((a, b) => {
-    const nameA = (bettorById(a.rep.bettorId)?.name || '').toLowerCase();
-    const nameB = (bettorById(b.rep.bettorId)?.name || '').toLowerCase();
-    return nameA.localeCompare(nameB);
-  });
-
-  count.textContent = state.bets.length + ' wagers total (' + groups.length + ' entries)';
 
 // ─── TICKET ───────────────────────────────────────────────────────────────────
 function printTicket() {
