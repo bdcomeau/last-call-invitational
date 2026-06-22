@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:6px;">
-    <span id="header-version" style="font-size:10px;color:#2B4033;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;">v17.6</span>
+    <span id="header-version" style="font-size:10px;color:#2B4033;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;">v17.7</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -721,7 +721,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v17.6: migrate missing house take fields
+        // v17.7: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1463,7 +1463,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v17.6';
+const APP_VERSION = 'v17.7';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -1585,7 +1585,7 @@ function removeTeam(id) {
   if (!team) return;
   const betCount = state.bets.filter(b => b.teamId === id).length;
   if (betCount > 0) {
-    alert('⛔ Cannot delete "' + team.name + '" — there ' + (betCount === 1 ? 'is' : 'are') + ' ' + betCount + ' active bet' + (betCount !== 1 ? 's' : '') + ' on this team.\n\nRemove those bets on the View Wagers tab first, then delete the team.');
+    alert('⛔ Cannot delete "' + team.name + '" — there ' + (betCount === 1 ? 'is' : 'are') + ' ' + betCount + ' active bet' + (betCount !== 1 ? 's' : '') + ' on this team.');
     return;
   }
   if (!confirm('Delete team "' + team.name + '"? This cannot be undone.')) return;
