@@ -576,7 +576,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v14.0</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v14.1</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -702,7 +702,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v14.0: migrate missing house take fields
+        // v14.1: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1360,7 +1360,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v14.0';
+const APP_VERSION = 'v14.1';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -2474,14 +2474,32 @@ function loadEntrySheet() {
   }
 
   if (rows) {
-    const teamRows = teams.map(t =>
-      '<div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;align-items:center;padding:4px 4px;">' +
-        '<div style="font-size:13px;font-weight:600;color:#EDE8DC;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(t.name) + '">' + esc(t.name) + '</div>' +
+    // Pre-calculate current odds for each team
+    const bets = state.bets || [];
+    const winPool   = bets.filter(b=>b.type==='win').reduce((s,b)=>s+b.amount,0);
+    const placePool = bets.filter(b=>b.type==='place').reduce((s,b)=>s+b.amount,0);
+    const showPool  = bets.filter(b=>b.type==='show').reduce((s,b)=>s+b.amount,0);
+    function teamOdds(tid) {
+      const ws = bets.filter(b=>b.type==='win'  &&b.teamId===tid).reduce((s,b)=>s+b.amount,0);
+      const ps = bets.filter(b=>b.type==='place'&&b.teamId===tid).reduce((s,b)=>s+b.amount,0);
+      const ss = bets.filter(b=>b.type==='show' &&b.teamId===tid).reduce((s,b)=>s+b.amount,0);
+      const w = ws>0?(winPool/ws).toFixed(1)+'×':'—';
+      const p = ps>0?(placePool/ps).toFixed(1)+'×':'—';
+      const s = ss>0?(showPool/ss).toFixed(1)+'×':'—';
+      return {w,p,s,any:ws>0||ps>0||ss>0};
+    }
+    const teamRows = teams.map(t => {
+      const o = teamOdds(t.id);
+      return '<div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;align-items:center;padding:4px 4px;">' +
+        '<div style="overflow:hidden;">' +
+          '<div style="font-size:13px;font-weight:600;color:#EDE8DC;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(t.name) + '">' + esc(t.name) + '</div>' +
+          (o.any ? '<div style="font-size:9px;color:#7A9E89;margin-top:1px;white-space:nowrap;">' + o.w + ' / ' + o.p + ' / ' + o.s + '</div>' : '') +
+        '</div>' +
         makeSelect(t.id, 'win',   false, '#3DB86E', '#2B4033') +
         makeSelect(t.id, 'place', false, '#5AAEDD', '#2B4033') +
         makeSelect(t.id, 'show',  false, '#B07FDE', '#2B4033') +
-      '</div>'
-    ).join('');
+      '</div>';
+    }).join('');
 
     const nTeams = teams.length;
     const fieldRow =
