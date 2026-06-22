@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:6px;">
-    <span id="header-version" style="font-size:10px;color:#2B4033;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;">v17.0</span>
+    <span id="header-version" style="font-size:10px;color:#2B4033;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;">v17.1</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -721,7 +721,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v17.0: migrate missing house take fields
+        // v17.1: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1457,7 +1457,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v17.0';
+const APP_VERSION = 'v17.1';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -3296,15 +3296,21 @@ function calcPayouts() {
   } : { win: 0, place: 0, show: 0 };
   // Any sub-dollar remainder from flooring goes to house — no drift correction needed
 
+  // Helper: get the effective bet amount for payout calculation
+  // Field bets store amount = unitAmount × nTeams — payout should be based on what bettor actually paid
+  const payAmt = (b) => (b.teamId === 'FIELD' && b.unitAmount) ? b.unitAmount
+                       : (b.teamId === 'FIELD' && b.fieldTeamCount) ? b.amount / b.fieldTeamCount
+                       : b.amount;
+
   const covers = (bet, pos) => bet.teamId === 'FIELD' || bet.teamId === placements[pos];
 
-  // Winning stakes per pool/position
-  const winStake  = _bets.filter(b => b.type==='win'   && covers(b,0)).reduce((s,b)=>s+b.amount,0);
-  const pl1Stake  = _bets.filter(b => b.type==='place' && covers(b,0)).reduce((s,b)=>s+b.amount,0);
-  const pl2Stake  = _bets.filter(b => b.type==='place' && covers(b,1)).reduce((s,b)=>s+b.amount,0);
-  const sh1Stake  = _bets.filter(b => b.type==='show'  && covers(b,0)).reduce((s,b)=>s+b.amount,0);
-  const sh2Stake  = _bets.filter(b => b.type==='show'  && covers(b,1)).reduce((s,b)=>s+b.amount,0);
-  const sh3Stake  = _bets.filter(b => b.type==='show'  && covers(b,2)).reduce((s,b)=>s+b.amount,0);
+  // Winning stakes per pool/position — use payAmt so field bets contribute their true unit amount
+  const winStake  = _bets.filter(b => b.type==='win'   && covers(b,0)).reduce((s,b)=>s+payAmt(b),0);
+  const pl1Stake  = _bets.filter(b => b.type==='place' && covers(b,0)).reduce((s,b)=>s+payAmt(b),0);
+  const pl2Stake  = _bets.filter(b => b.type==='place' && covers(b,1)).reduce((s,b)=>s+payAmt(b),0);
+  const sh1Stake  = _bets.filter(b => b.type==='show'  && covers(b,0)).reduce((s,b)=>s+payAmt(b),0);
+  const sh2Stake  = _bets.filter(b => b.type==='show'  && covers(b,1)).reduce((s,b)=>s+payAmt(b),0);
+  const sh3Stake  = _bets.filter(b => b.type==='show'  && covers(b,2)).reduce((s,b)=>s+payAmt(b),0);
 
   // CORRECT FORMULA: payout = (bet / winning_stake) × net_pool
   // i.e. your proportional share of the net pool — stake is NOT returned separately
@@ -3326,9 +3332,9 @@ function calcPayouts() {
 
     betResults = _bets.map(b => {
       let payout = 0;
-      if (b.type === 'win'   && covers(b,0)) payout = winShare(b.amount);
-      if (b.type === 'place' && (covers(b,0) || covers(b,1))) payout = plShare(b.amount);
-      if (b.type === 'show'  && (covers(b,0) || covers(b,1) || covers(b,2))) payout = shShare(b.amount);
+      if (b.type === 'win'   && covers(b,0)) payout = winShare(payAmt(b));
+      if (b.type === 'place' && (covers(b,0) || covers(b,1))) payout = plShare(payAmt(b));
+      if (b.type === 'show'  && (covers(b,0) || covers(b,1) || covers(b,2))) payout = shShare(payAmt(b));
       return { ...b, payout };  // keep full precision until final rounding
     });
 
@@ -3364,15 +3370,15 @@ function calcPayouts() {
 
     betResults = _bets.map(b => {
       let payout = 0;
-      if (b.type === 'win'   && covers(b,0)) payout = winShare(b.amount);
+      if (b.type === 'win'   && covers(b,0)) payout = winShare(payAmt(b));
       if (b.type === 'place') {
-        if      (covers(b,0)) payout = pl1Share(b.amount);
-        else if (covers(b,1)) payout = pl2Share(b.amount);
+        if      (covers(b,0)) payout = pl1Share(payAmt(b));
+        else if (covers(b,1)) payout = pl2Share(payAmt(b));
       }
       if (b.type === 'show') {
-        if      (covers(b,0)) payout = shShare[0](b.amount);
-        else if (covers(b,1)) payout = shShare[1](b.amount);
-        else if (covers(b,2)) payout = shShare[2](b.amount);
+        if      (covers(b,0)) payout = shShare[0](payAmt(b));
+        else if (covers(b,1)) payout = shShare[1](payAmt(b));
+        else if (covers(b,2)) payout = shShare[2](payAmt(b));
       }
       return { ...b, payout };  // keep full precision until final rounding
     });
