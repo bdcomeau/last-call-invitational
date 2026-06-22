@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:8px;">
-    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v18.9</span>
+    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.0</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -721,7 +721,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v18.9: migrate missing house take fields
+        // v19.0: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1457,7 +1457,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v18.9';
+const APP_VERSION = 'v19.0';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -3086,13 +3086,12 @@ function showTicketConfirmation(ticketRef, bettor, grand, bettorId) {
 
   content.innerHTML =
     '<div style="text-align:center;padding:10px 0 20px;">' +
-      '<div style="font-size:11px;color:#7A9E89;letter-spacing:2px;margin-bottom:8px;">TICKET GENERATED — WRITE THIS ON THE PAPER SHEET</div>' +
-      '<div style="font-family:Barlow Condensed,sans-serif;font-size:72px;font-weight:900;color:#D4A843;line-height:1;letter-spacing:2px;margin-bottom:8px;">' + ticketRef + '</div>' +
-      '<div style="font-size:15px;color:#EDE8DC;font-weight:600;margin-bottom:4px;">' + esc(bettor ? bettor.name : '') + '</div>' +
-      '<div style="font-size:13px;color:#3DB86E;font-weight:700;margin-bottom:20px;">Cash collected: ' + fmt(grand) + ' ✓</div>' +
-      '<div style="background:#E0525218;border:1px solid #E0525255;border-radius:8px;padding:10px 14px;margin-bottom:20px;">' +
-        '<div style="font-size:13px;color:#E05252;font-weight:600;line-height:1.5;">Record this ticket number on the physical betting sheet and retain for the house\'s records. You may share or print a copy of the betting ticket with the bettor using the button below.</div>' +
+      '<div style="background:#E05252;border-radius:10px;padding:14px 16px;margin-bottom:20px;">' +
+        '<div style="font-size:19px;font-weight:900;color:#fff;letter-spacing:1px;line-height:1.3;">✍️ WRITE THIS NUMBER ON THE<br>PHYSICAL BETTING SHEET NOW</div>' +
       '</div>' +
+      '<div style="font-family:Barlow Condensed,sans-serif;font-size:96px;font-weight:900;color:#D4A843;line-height:1;letter-spacing:4px;margin-bottom:12px;">' + ticketRef + '</div>' +
+      '<div style="font-size:16px;color:#EDE8DC;font-weight:700;margin-bottom:4px;">' + esc(bettor ? bettor.name : '') + '</div>' +
+      '<div style="font-size:14px;color:#3DB86E;font-weight:700;margin-bottom:24px;">Cash collected: ' + fmt(grand) + ' ✓</div>' +
       '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' +
         '<button class="btn btn-primary" style="font-size:14px;padding:12px 20px;" onclick="shareTicket()">📤 Share / Print Receipt</button>' +
         '<button class="btn btn-ghost" style="font-size:14px;padding:12px 20px;" onclick="closeTicketConfirm()">✓ Done</button>' +
@@ -3255,7 +3254,7 @@ function printBettingSheet() {
       '@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }' +
     '</style></head><body>' + allSheets + '</body></html>';
 
-  const sheetHtml = injectPrintButton(html, '🖨 Print / Share Betting Sheets');
+  const sheetHtml = html;
 
   const styleId = 'sheet-print-style';
   let s = document.getElementById(styleId);
