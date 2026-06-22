@@ -449,17 +449,17 @@
         </div>
 
         <!-- Column headers -->
-        <div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;margin-bottom:6px;padding:0 4px;">
+        <div style="display:grid;grid-template-columns:1fr 80px 80px 80px;gap:4px;margin-bottom:6px;padding:0 4px;">
           <div style="font-size:10px;color:#7A9E89;letter-spacing:1px;">TEAM</div>
           <div style="font-size:10px;color:#3DB86E;letter-spacing:1px;text-align:center;">WIN</div>
           <div style="font-size:10px;color:#5AAEDD;letter-spacing:1px;text-align:center;">PLACE</div>
           <div style="font-size:10px;color:#B07FDE;letter-spacing:1px;text-align:center;">SHOW</div>
         </div>
 
-        <div id="entry-rows" style="display:flex;flex-direction:column;gap:4px;max-height:420px;overflow-y:auto;"></div>
+        <div id="entry-rows" style="display:flex;flex-direction:column;gap:4px;"></div>
 
         <!-- Totals row -->
-        <div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;margin-top:8px;padding:8px 4px;border-top:1px solid #2B4033;">
+        <div style="display:grid;grid-template-columns:1fr 80px 80px 80px;gap:4px;margin-top:8px;padding:8px 4px;border-top:1px solid #2B4033;">
           <div style="font-size:11px;font-weight:700;color:#D4A843;">TOTAL</div>
           <div style="font-size:12px;font-weight:700;color:#3DB86E;text-align:center;" id="entry-total-win">$0</div>
           <div style="font-size:12px;font-weight:700;color:#5AAEDD;text-align:center;" id="entry-total-place">$0</div>
@@ -685,7 +685,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v15.3</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v15.5</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -809,7 +809,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v15.3: migrate missing house take fields
+        // v15.5: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1482,7 +1482,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v15.3';
+const APP_VERSION = 'v15.5';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -2020,6 +2020,10 @@ function renderWagers() {
     const tn  = teamName(g.rep.teamId).toLowerCase();
     const ref = (g.rep.ticketRef || '').toLowerCase();
     return bn.includes(search) || tn.includes(search) || (g.comboType||g.rep.type).includes(search) || ref.includes(search);
+  }).sort((a, b) => {
+    const nameA = (bettorById(a.rep.bettorId)?.name || '').toLowerCase();
+    const nameB = (bettorById(b.rep.bettorId)?.name || '').toLowerCase();
+    return nameA.localeCompare(nameB);
   });
 
   count.textContent = state.bets.length + ' wagers total (' + groups.length + ' entries)';
@@ -2621,7 +2625,7 @@ function loadEntrySheet() {
   function makeSelect(teamId, type, isField, color, borderColor) {
     return '<select data-team="' + teamId + '" data-type="' + type + '"' + (isField ? ' data-field="1"' : '') +
       ' style="background:#162219;border:1px solid ' + borderColor + ';border-radius:6px;color:' + color + ';' +
-      'padding:5px 2px;font-size:12px;text-align:center;outline:none;width:100%;-webkit-appearance:auto;" ' +
+      'padding:8px 2px;font-size:13px;text-align:center;outline:none;width:100%;-webkit-appearance:auto;" ' +
       'onchange="updateEntryTotals()">' + amtOptions + '</select>';
   }
 
@@ -2642,7 +2646,7 @@ function loadEntrySheet() {
     }
     const teamRows = teams.map(t => {
       const o = teamOdds(t.id);
-      return '<div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;align-items:center;padding:4px 4px;">' +
+      return '<div style="display:grid;grid-template-columns:1fr 80px 80px 80px;gap:4px;align-items:center;padding:6px 4px;">' +
         '<div style="overflow:hidden;">' +
           '<div style="font-size:13px;font-weight:600;color:#EDE8DC;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(t.name) + '">' + esc(t.name) + '</div>' +
           (o.any ? '<div style="font-size:9px;color:#7A9E89;margin-top:1px;white-space:nowrap;">' + o.w + ' / ' + o.p + ' / ' + o.s + '</div>' : '') +
@@ -2655,7 +2659,7 @@ function loadEntrySheet() {
 
     const nTeams = teams.length;
     const fieldRow =
-      '<div style="display:grid;grid-template-columns:1fr 72px 72px 72px;gap:4px;align-items:center;padding:4px 4px;border-top:1px solid #2B4033;margin-top:4px;">' +
+      '<div style="display:grid;grid-template-columns:1fr 80px 80px 80px;gap:4px;align-items:center;padding:6px 4px;border-top:1px solid #2B4033;margin-top:4px;">' +
         '<div style="font-size:13px;font-weight:600;color:#D4A843;">🌐 Field' +
           (nTeams > 0 ? '<div style="font-size:9px;color:#7A9E89;">×' + nTeams + ' teams</div>' : '') +
         '</div>' +
