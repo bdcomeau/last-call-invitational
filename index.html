@@ -447,24 +447,29 @@
         <div class="tote-footer" id="tote-footer">Handle (3%): $0.00 · Net payout pool: $0.00</div>
       </div>
 
-      <!-- Live Odds -->
+      <!-- Live Odds — collapsible -->
       <div class="card" id="odds-card" style="display:none;">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">📊 LIVE ODDS — ESTIMATED RETURN PER $1 BET</div>
-        <div style="display:grid;grid-template-columns:1fr 58px 58px 58px;gap:3px;margin-bottom:4px;padding:0 6px;">
-          <div style="font-size:9px;color:#7A9E89;letter-spacing:1px;">TEAM</div>
-          <div style="font-size:9px;color:#3DB86E;text-align:center;letter-spacing:1px;">WIN</div>
-          <div style="font-size:9px;color:#5AAEDD;text-align:center;letter-spacing:1px;">PLACE</div>
-          <div style="font-size:9px;color:#B07FDE;text-align:center;letter-spacing:1px;">SHOW</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleOdds()">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:#8F6E2A;letter-spacing:2px;">📊 LIVE ODDS — ESTIMATED RETURN PER $1 BET</div>
+          <span id="odds-toggle-icon" style="font-size:16px;color:#8F6E2A;user-select:none;">▲</span>
         </div>
-        <div id="odds-rows"></div>
-        <div style="font-size:10px;color:#7A9E89;margin-top:8px;padding-top:8px;border-top:1px solid #2B4033;line-height:1.5;">
-          Odds = estimated return per $1 wagered · 4.2× means $10 bet returns ~$42 · Updates live as bets are entered
+        <div id="odds-body">
+          <div style="display:grid;grid-template-columns:1fr 58px 58px 58px;gap:3px;margin:10px 0 4px;padding:0 6px;">
+            <div style="font-size:9px;color:#7A9E89;letter-spacing:1px;">TEAM</div>
+            <div style="font-size:9px;color:#3DB86E;text-align:center;letter-spacing:1px;">WIN</div>
+            <div style="font-size:9px;color:#5AAEDD;text-align:center;letter-spacing:1px;">PLACE</div>
+            <div style="font-size:9px;color:#B07FDE;text-align:center;letter-spacing:1px;">SHOW</div>
+          </div>
+          <div id="odds-rows"></div>
+          <div style="font-size:10px;color:#7A9E89;margin-top:8px;padding-top:8px;border-top:1px solid #2B4033;line-height:1.5;">
+            Odds = estimated return per $1 wagered · 4.2× means $10 bet returns ~$42 · Updates live as bets are entered
+          </div>
         </div>
       </div>
 
 <!-- Bet entry moved to Bet Entry tab -->
       <div class="card" id="wagers-card" style="display:none;">
-        <input type="text" class="bare" id="wager-search" placeholder="🔍  Filter wagers…" oninput="renderWagers()" style="margin-bottom:10px;" />
+        <input type="text" class="bare" id="wager-search" placeholder="🔍  Filter by bettor, team, type or ticket #…" oninput="renderWagers()" style="margin-bottom:10px;" />
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;" id="wagers-count"></div>
         <div class="scroll-list" id="wagers-list" style="max-height:440px;"></div>
       </div>
@@ -578,7 +583,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v14.6</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v14.8</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -704,7 +709,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v14.6: migrate missing house take fields
+        // v14.8: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1361,7 +1366,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v14.6';
+const APP_VERSION = 'v14.8';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -1652,6 +1657,15 @@ function updateTote() {
   updateOdds();
 }
 
+function toggleOdds() {
+  const body = document.getElementById('odds-body');
+  const icon = document.getElementById('odds-toggle-icon');
+  if (!body) return;
+  const collapsed = body.style.display === 'none';
+  body.style.display = collapsed ? '' : 'none';
+  if (icon) icon.textContent = collapsed ? '▲' : '▼';
+}
+
 function updateOdds() {
   const card = document.getElementById('odds-card');
   const rows = document.getElementById('odds-rows');
@@ -1877,8 +1891,9 @@ function renderWagers() {
   const filtered = groups.filter(g => {
     if (!search) return true;
     const bn = (bettorById(g.rep.bettorId)?.name||'').toLowerCase();
-    const tn = teamName(g.rep.teamId).toLowerCase();
-    return bn.includes(search) || tn.includes(search) || (g.comboType||g.rep.type).includes(search);
+    const tn  = teamName(g.rep.teamId).toLowerCase();
+    const ref = (g.rep.ticketRef || '').toLowerCase();
+    return bn.includes(search) || tn.includes(search) || (g.comboType||g.rep.type).includes(search) || ref.includes(search);
   });
 
   count.textContent = state.bets.length + ' wagers total (' + groups.length + ' entries)';
