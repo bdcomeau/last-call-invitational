@@ -211,6 +211,8 @@
     <!-- EVENTS -->
     <div class="screen active" id="screen-events">
       <div class="section-head">📅 Events</div>
+
+      <!-- Create new event -->
       <div class="card">
         <div style="font-size:12px;color:#7A9E89;margin-bottom:10px;">CREATE NEW EVENT</div>
         <div style="display:flex;flex-direction:column;gap:10px;">
@@ -218,14 +220,88 @@
           <button class="btn btn-primary" onclick="newTournament()">+ Create Event</button>
         </div>
       </div>
+
+      <!-- Events list — collapsible -->
       <div class="card" id="events-list-card" style="display:none;">
-        <div style="font-size:11px;color:#7A9E89;margin-bottom:10px;" id="events-count"></div>
-        <div id="events-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:10px;" onclick="toggleEventsList()">
+          <div style="font-size:11px;color:#7A9E89;" id="events-count"></div>
+          <span id="events-list-toggle-icon" style="font-size:14px;color:#7A9E89;">▲</span>
+        </div>
+        <div id="events-list-body">
+          <div id="events-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+      </div>
+
+      <!-- Active event setup — shown inline when an event is active and not archived -->
+      <div id="active-event-setup" style="display:none;">
+        <div style="font-family:Barlow Condensed,sans-serif;font-size:13px;color:#D4A843;letter-spacing:2px;padding:8px 4px 6px;">⚙️ EVENT SETUP</div>
+
+        <!-- Event name -->
+        <div class="card">
+          <div class="field">
+            <label>Event Name</label>
+            <input type="text" id="tournament-name" placeholder="Last Call Invitational 2026" />
+          </div>
+        </div>
+
+        <!-- Payout model -->
+        <div class="card">
+          <div style="font-size:12px;color:#7A9E89;margin-bottom:10px;letter-spacing:1px;">PAYOUT CALCULATION MODEL</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#162219;border-radius:8px;cursor:pointer;" id="mode-label-simplified">
+              <input type="radio" id="mode-simplified" name="payoutMode" value="simplified" style="margin-top:2px;accent-color:#D4A843;" onchange="setPayoutMode('simplified')" />
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#EDE8DC;">Simplified</div>
+                <div style="font-size:10px;color:#7A9E89;margin-top:2px;line-height:1.5;">PLACE split 50/50 · SHOW split into thirds. Good for small tournaments.</div>
+              </div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#162219;border-radius:8px;cursor:pointer;" id="mode-label-racetrack">
+              <input type="radio" id="mode-racetrack" name="payoutMode" value="racetrack" style="margin-top:2px;accent-color:#D4A843;" onchange="setPayoutMode('racetrack')" />
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#EDE8DC;">True Racetrack</div>
+                <div style="font-size:10px;color:#7A9E89;margin-top:2px;line-height:1.5;">PLACE &amp; SHOW distributed proportionally to all bettors on placing teams.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Add Teams -->
+        <div class="card">
+          <div class="section-head">Add Teams</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="field"><label>Team Name</label><input type="text" id="new-team-name" placeholder="Eagle Chasers" /></div>
+            <button class="btn btn-primary" onclick="addTeam()">+ Add Team</button>
+            <div class="divider"></div>
+            <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import a list —</div>
+            <div style="font-size:10px;color:#7A9E89;text-align:center;">Save as <strong style="color:#EDE8DC;">CSV</strong> from Excel/Numbers first · one name per row</div>
+            <input type="file" id="import-teams-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importTeams(this)" />
+            <div id="import-teams-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
+          </div>
+        </div>
+        <div class="card" id="teams-card" style="display:none;">
+          <div style="font-size:11px;color:#7A9E89;margin-bottom:10px;" id="teams-count"></div>
+          <div class="scroll-list" id="teams-list"></div>
+        </div>
+
+        <!-- Reset -->
+        <div class="card" style="border-color:#E0525244;">
+          <div style="font-size:13px;font-weight:700;color:#E05252;margin-bottom:6px;">⚠️ Reset Event Data</div>
+          <div style="font-size:11px;color:#7A9E89;margin-bottom:14px;line-height:1.6;">Removes <strong style="color:#EDE8DC;">all teams, bets and bettors</strong> for this event and resets placements. Cannot be undone.</div>
+          <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;text-align:center;">Slide to confirm reset →</div>
+          <div style="position:relative;height:44px;background:#162219;border:1px solid #E0525244;border-radius:22px;overflow:hidden;">
+            <div id="reset-track-fill" style="position:absolute;left:0;top:0;bottom:0;width:44px;background:#E0525233;border-radius:22px;transition:width .05s;pointer-events:none;"></div>
+            <div id="reset-thumb" style="position:absolute;left:0;top:0;width:44px;height:44px;background:#E05252;border-radius:22px;display:flex;align-items:center;justify-content:center;cursor:grab;user-select:none;touch-action:none;z-index:2;">
+              <span style="font-size:18px;">🗑</span>
+            </div>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#E0525266;pointer-events:none;padding-left:50px;">SLIDE TO RESET</div>
+          </div>
+          <div id="reset-success" style="display:none;text-align:center;padding:10px;font-size:13px;color:#E05252;font-weight:700;">✓ Reset complete</div>
+        </div>
       </div>
     </div>
 
-    <!-- SETUP -->
-    <div class="screen" id="screen-setup">
+    <!-- SETUP — merged into Events tab -->
+    <div class="screen" id="screen-setup" style="display:none!important;">
       <div class="section-head">⚙️ Tournament Setup</div>
       <div class="card">
         <div class="field">
@@ -336,7 +412,7 @@
 
     <!-- ENTRY — Batch Bet Entry -->
     <div class="screen" id="screen-entry">
-      <div class="section-head">📋 Bet Entry</div>
+      <div class="section-head">📋 Place Bets</div>
 
       <!-- 1. Bettor selector -->
       <div class="card">
@@ -425,7 +501,7 @@
 
     <!-- WAGERS -->
     <div class="screen" id="screen-wagers">
-      <div class="section-head">🎰 Place Wagers</div>
+      <div class="section-head">🎰 Wager Management</div>
       <div class="card" style="margin-bottom:4px;">
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">🎟 BETTOR TICKET / RECEIPT</div>
         <div style="display:flex;gap:8px;align-items:center;">
@@ -474,7 +550,7 @@
         <div class="scroll-list" id="wagers-list" style="max-height:440px;"></div>
       </div>
     </div>
-    <div class="screen" id="screen-placements">
+    <div class="screen" id="screen-placements" style="display:none!important;">
       <div class="section-head">🏆 Final Placements</div>
       <div class="card">
         <div style="font-size:12px;color:#7A9E89;margin-bottom:14px;line-height:1.5;">
@@ -515,12 +591,32 @@
     <!-- RESULTS -->
     <div class="screen" id="screen-results">
       <div class="section-head">📋 Results &amp; Payouts</div>
-      <div id="results-placeholder" class="card">
-        <div style="color:#7A9E89;text-align:center;padding:40px;line-height:1.8;">
-          Set the final placements on the<br/><strong style="color:#D4A843;">Placements</strong> tab to calculate payouts.
+      <!-- Final Placements — moved from Places tab -->
+      <div class="card">
+        <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">🏆 FINAL PLACEMENTS</div>
+        <div style="font-size:12px;color:#7A9E89;margin-bottom:14px;line-height:1.5;">
+          Select the finishing order. Once all three are set, payouts calculate automatically.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="placement-card" id="pc-p1">
+            <div class="placement-label" style="color:#D4A843;">🥇 1st Place — WINS</div>
+            <div class="field"><select id="place-p1" onchange="setPlacement('p1', this.value)"><option value="">— Select Team —</option></select></div>
+            <div class="placement-name" id="pname-p1" style="color:#D4A843;display:none;"></div>
+          </div>
+          <div class="placement-card" id="pc-p2">
+            <div class="placement-label" style="color:#C0C0C0;">🥈 2nd Place — PLACE &amp; SHOW</div>
+            <div class="field"><select id="place-p2" onchange="setPlacement('p2', this.value)"><option value="">— Select Team —</option></select></div>
+            <div class="placement-name" id="pname-p2" style="color:#C0C0C0;display:none;"></div>
+          </div>
+          <div class="placement-card" id="pc-p3">
+            <div class="placement-label" style="color:#CD7F32;">🥉 3rd Place — SHOW only</div>
+            <div class="field"><select id="place-p3" onchange="setPlacement('p3', this.value)"><option value="">— Select Team —</option></select></div>
+            <div class="placement-name" id="pname-p3" style="color:#CD7F32;display:none;"></div>
+          </div>
         </div>
       </div>
-      <div id="results-content" style="display:none;display:flex;flex-direction:column;gap:16px;">
+      <div id="results-placeholder" style="display:none;"></div>
+      <div id="results-content" style="display:flex;flex-direction:column;gap:16px;">
         <!-- House Take — set here, applied in real time -->
         <div class="card">
           <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">HOUSE TAKE</div>
@@ -583,15 +679,13 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v14.8</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v15.0</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
-    <button onclick="showTab('setup')"><span class="tab-icon">⚙️</span><span class="tab-label">SETUP</span></button>
     <button onclick="showTab('bettors')"><span class="tab-icon">👥</span><span class="tab-label">BETTORS</span></button>
-    <button onclick="showTab('entry')"><span class="tab-icon">📋</span><span class="tab-label">BET ENTRY</span></button>
-    <button onclick="showTab('wagers')"><span class="tab-icon">🎰</span><span class="tab-label">WAGERS</span></button>
-    <button onclick="showTab('placements')"><span class="tab-icon">🏆</span><span class="tab-label">PLACES</span></button>
+    <button onclick="showTab('entry')"><span class="tab-icon">📋</span><span class="tab-label">PLACE BETS</span></button>
+    <button onclick="showTab('wagers')"><span class="tab-icon">🎰</span><span class="tab-label">VIEW WAGERS</span></button>
     <button onclick="showTab('results')"><span class="tab-icon">📋</span><span class="tab-label">RESULTS</span></button>
   </div>
 </div>
@@ -709,7 +803,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v14.8: migrate missing house take fields
+        // v15.0: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -762,7 +856,7 @@ function showTab(tab) {
     const btns = document.querySelectorAll('#tabbar button');
     if (idx >= 0 && btns[idx]) btns[idx].classList.add('active');
     window.scrollTo(0, 0);
-    if (tab === 'events')     renderEvents();
+    if (tab === 'events')     { renderEvents(); updateActiveEventSetup(); }
     if (tab === 'entry')      loadEntryTab();
     if (tab === 'wagers')     { renderBetDropdowns(); renderWagers(); updateTote(); }
     if (tab === 'placements') renderPlacements();
@@ -853,6 +947,7 @@ function setActiveEvent(id) {
   const hd = document.getElementById('handle-display');
   if (tn) tn.value = state.tournamentName || '';
   updatePayoutModeUI();
+  updateActiveEventSetup();
   renderTeams();
   renderBettors();
   updateTote();
@@ -910,6 +1005,27 @@ function viewArchivedResults(id) {
   // Restore active event — do NOT save (archived event is read-only)
   root.activeEventId = activeId;
   syncStateFromRoot();
+}
+
+function toggleEventsList() {
+  const body = document.getElementById('events-list-body');
+  const icon = document.getElementById('events-list-toggle-icon');
+  if (!body) return;
+  const collapsed = body.style.display === 'none';
+  body.style.display = collapsed ? '' : 'none';
+  if (icon) icon.textContent = collapsed ? '▲' : '▼';
+}
+
+function updateActiveEventSetup() {
+  const ev     = activeEvent();
+  const panel  = document.getElementById('active-event-setup');
+  if (!panel) return;
+  // Show setup panel only for active, non-archived events
+  if (ev && !ev.archived) {
+    panel.style.display = '';
+  } else {
+    panel.style.display = 'none';
+  }
 }
 
 function renderEvents() {
@@ -1366,7 +1482,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v14.8';
+const APP_VERSION = 'v15.0';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -3136,12 +3252,10 @@ function renderResults() {
   const _placements = (ev && ev.placements) ? ev.placements : (state.placements || {});
   const { p1, p2, p3 } = _placements;
   const ready = !!(p1 && p2 && p3);
-  document.getElementById('results-placeholder').style.display = ready ? 'none' : '';
+  // Placements are now always shown at top of Results — content shows when ready
   const content = document.getElementById('results-content');
-  if (!ready) { content.style.display = 'none'; return; }
-  content.style.display = 'flex';
-  content.style.flexDirection = 'column';
-  content.style.gap = '16px';
+  content.style.display = ready ? 'flex' : 'none';
+  if (content.style.display === 'flex') { content.style.flexDirection = 'column'; content.style.gap = '16px'; }
 
   const { betResults, pools, net, houseRetained, totalCollected, totalPayout } = calcPayouts();
   const balanced = Math.abs(totalCollected - totalPayout - houseRetained) < 0.02;
