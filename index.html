@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:6px;">
-    <span id="header-version" style="font-size:10px;color:#2B4033;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;">v17.1</span>
+    <span id="header-version" style="font-size:10px;color:#2B4033;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;">v17.2</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -721,7 +721,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v17.1: migrate missing house take fields
+        // v17.2: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1457,7 +1457,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v17.1';
+const APP_VERSION = 'v17.2';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -1796,15 +1796,19 @@ function updateOdds() {
 
   // For each team: odds = net pool / stake on that team (return per $1 bet)
   // Field bets are stored as amount × nTeams — so for per-team odds we must use unitAmount
+  // Same payAmt helper as calcPayouts — field bets use unitAmount for odds display
+  const payAmtOdds = (b) => (b.teamId === 'FIELD' && b.unitAmount) ? b.unitAmount
+                           : (b.teamId === 'FIELD' && b.fieldTeamCount) ? b.amount / b.fieldTeamCount
+                           : b.amount;
+
   function teamStake(type, teamId) {
     if (teamId === 'FIELD') {
-      // FIELD stake = full stored amount (already amount × nTeams)
-      // This correctly reflects that field bettors compete against each other
-      // across all teams, making field a low-odds bet (like a heavy favourite)
+      // FIELD odds: use unitAmount (what bettor actually paid per team)
+      // so odds reflect the real return on the $1/$5/etc the bettor handed over
       return bets.filter(b => b.type === type && b.teamId === 'FIELD')
-                 .reduce((s,b) => s + b.amount, 0);
+                 .reduce((s,b) => s + payAmtOdds(b), 0);
     }
-    // Regular team: includes direct bets + field bets (already expanded to full amount)
+    // Regular team: includes direct bets + field bets (full stored amount)
     return bets.filter(b => b.type === type && (b.teamId === teamId || b.teamId === 'FIELD'))
                .reduce((s,b) => s + b.amount, 0);
   }
@@ -2778,11 +2782,12 @@ function loadEntrySheet() {
       // For regular teams: include direct bets + field bets (already expanded)
       // For FIELD: use unitAmount (per-team amount the bettor paid)
       function stake(type) {
-        // Both FIELD and regular teams use the full stored amount
-        // FIELD amount is already expanded (unitAmount × nTeams), correctly
-        // making field a low-odds bet since it competes against all teams
         if (tid === 'FIELD') {
-          return bets.filter(b=>b.type===type&&b.teamId==='FIELD').reduce((s,b)=>s+b.amount,0);
+          // Use unitAmount for field odds — same logic as calcPayouts payAmt
+          return bets.filter(b=>b.type===type&&b.teamId==='FIELD').reduce((s,b)=>{
+            const unit = b.unitAmount || (b.fieldTeamCount > 0 ? b.amount / b.fieldTeamCount : b.amount);
+            return s + unit;
+          }, 0);
         }
         return bets.filter(b=>b.type===type&&(b.teamId===tid||b.teamId==='FIELD')).reduce((s,b)=>s+b.amount,0);
       }
