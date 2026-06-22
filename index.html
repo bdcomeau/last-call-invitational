@@ -518,8 +518,19 @@
           </div>
         </div>
       </div>
-      <div id="results-placeholder" style="display:none;"></div>
-      <div id="results-content" style="display:flex;flex-direction:column;gap:16px;">
+      <div id="confirmed-banner" class="card" style="border:1px solid #3DB86E44;display:none;">
+        <div class="confirmed-banner">
+          <span class="emoji">✅</span>
+          <div>
+            <div style="font-weight:700;color:#3DB86E;font-size:15px;">Placements confirmed — payouts calculated!</div>
+            <div style="font-size:12px;color:#7A9E89;margin-top:2px;">Scroll down to view the reconciliation report.</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="no-teams-msg" style="display:none;">
+        <div style="color:#7A9E89;text-align:center;padding:24px;">Add teams on the Events tab first.</div>
+      </div>
+      <div id="results-content" style="display:none;flex-direction:column;gap:16px;">
         <!-- House Take — set here, applied in real time -->
         <div class="card">
           <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">HOUSE TAKE</div>
@@ -582,7 +593,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v16.6</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v16.8</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -706,7 +717,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v16.6: migrate missing house take fields
+        // v16.8: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1442,7 +1453,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v16.6';
+const APP_VERSION = 'v16.8';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -3193,8 +3204,8 @@ function printBettingSheet() {
 // ─── PLACEMENTS ───────────────────────────────────────────────────────────────
 function renderPlacements() {
   const noTeams = document.getElementById('no-teams-msg');
-  if (!state.teams.length) { noTeams.style.display = ''; return; }
-  noTeams.style.display = 'none';
+  if (!state.teams.length) { if (noTeams) noTeams.style.display = ''; return; }
+  if (noTeams) noTeams.style.display = 'none';
 
   ['p1','p2','p3'].forEach(pos => {
     const sel = document.getElementById('place-' + pos);
@@ -3205,6 +3216,7 @@ function renderPlacements() {
         .filter(t => !others.includes(t.id) || t.id === cur)
         .sort((a,b) => a.name.localeCompare(b.name))
         .map(t => `<option value="${t.id}"${t.id===cur?' selected':''}>${esc(t.name)}</option>`)
+        .join('');
     const nameEl = document.getElementById('pname-' + pos);
     const card = document.getElementById('pc-' + pos);
     if (cur) {
@@ -3223,7 +3235,9 @@ function renderPlacements() {
 
 function setPlacement(pos, val) {
   state.placements[pos] = val;
-  save(); renderPlacements(); updateHeader();
+  const ev = activeEvent();
+  if (ev) ev.placements = state.placements;
+  save(); renderPlacements(); renderResults(); updateHeader();
 }
 
 // ─── RESULTS ─────────────────────────────────────────────────────────────────
