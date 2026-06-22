@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:6px;">
-    <span id="header-version" style="font-size:10px;color:#2B4033;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;">v17.2</span>
+    <span id="header-version" style="font-size:10px;color:#2B4033;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;">v17.3</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -721,7 +721,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v17.2: migrate missing house take fields
+        // v17.3: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1457,7 +1457,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v17.2';
+const APP_VERSION = 'v17.3';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -1796,18 +1796,23 @@ function updateOdds() {
 
   // For each team: odds = net pool / stake on that team (return per $1 bet)
   // Field bets are stored as amount × nTeams — so for per-team odds we must use unitAmount
-  // Same payAmt helper as calcPayouts — field bets use unitAmount for odds display
   const payAmtOdds = (b) => (b.teamId === 'FIELD' && b.unitAmount) ? b.unitAmount
                            : (b.teamId === 'FIELD' && b.fieldTeamCount) ? b.amount / b.fieldTeamCount
                            : b.amount;
 
+  // For FIELD row: compute average odds across all teams (weighted by stake)
+  function fieldOdds(type, netPool) {
+    const teamStakes = teams.map(t =>
+      bets.filter(b => b.type === type && (b.teamId === t.id || b.teamId === 'FIELD'))
+          .reduce((s,b) => s + b.amount, 0)
+    ).filter(s => s > 0);
+    if (!teamStakes.length) return 0;
+    // Weighted average: sum of (stake/total × net/stake) = net/total × count = net/avgStake
+    const total = teamStakes.reduce((s,x) => s+x, 0);
+    return total > 0 ? (netPool / (total / teamStakes.length)) : 0;
+  }
+
   function teamStake(type, teamId) {
-    if (teamId === 'FIELD') {
-      // FIELD odds: use unitAmount (what bettor actually paid per team)
-      // so odds reflect the real return on the $1/$5/etc the bettor handed over
-      return bets.filter(b => b.type === type && b.teamId === 'FIELD')
-                 .reduce((s,b) => s + payAmtOdds(b), 0);
-    }
     // Regular team: includes direct bets + field bets (full stored amount)
     return bets.filter(b => b.type === type && (b.teamId === teamId || b.teamId === 'FIELD'))
                .reduce((s,b) => s + b.amount, 0);
@@ -1829,20 +1834,28 @@ function updateOdds() {
   const allEntities = [...teams, { id: 'FIELD', name: '🌐 Field' }];
 
   rows.innerHTML = allEntities.map((t,i) => {
-    const winStake   = teamStake('win',   t.id);
-    const placeStake = teamStake('place', t.id);
-    const showStake  = teamStake('show',  t.id);
-
-    // Skip teams with no bets at all
-    if (winStake === 0 && placeStake === 0 && showStake === 0) return '';
-
-    // Place pool splits 50/50 between 1st and 2nd place winners
-    // Show pool splits into thirds — but we don't know placements yet
-    // So show "current odds if this team finishes 1st" for WIN
-    // and approximate for PLACE/SHOW
-    const winOdds   = oddsDisplay(netWin,         winStake);
-    const placeOdds = oddsDisplay(netPlace / 2,   placeStake);
-    const showOdds  = oddsDisplay(netShow  / 3,   showStake);
+    const isField = t.id === 'FIELD';
+    let winOdds, placeOdds, showOdds;
+    if (isField) {
+      const hasW = bets.some(b=>b.type==='win'  &&b.teamId==='FIELD');
+      const hasP = bets.some(b=>b.type==='place'&&b.teamId==='FIELD');
+      const hasS = bets.some(b=>b.type==='show' &&b.teamId==='FIELD');
+      if (!hasW && !hasP && !hasS) return '';
+      const fw = fieldOdds('win',   netWin);
+      const fp = fieldOdds('place', netPlace / 2);
+      const fs = fieldOdds('show',  netShow  / 3);
+      winOdds   = hasW && fw > 0 ? oddsDisplay(fw, 1) : '<span style="color:#2B4033;">—</span>';
+      placeOdds = hasP && fp > 0 ? oddsDisplay(fp, 1) : '<span style="color:#2B4033;">—</span>';
+      showOdds  = hasS && fs > 0 ? oddsDisplay(fs, 1) : '<span style="color:#2B4033;">—</span>';
+    } else {
+      const winStake   = teamStake('win',   t.id);
+      const placeStake = teamStake('place', t.id);
+      const showStake  = teamStake('show',  t.id);
+      if (winStake === 0 && placeStake === 0 && showStake === 0) return '';
+      winOdds   = oddsDisplay(netWin,         winStake);
+      placeOdds = oddsDisplay(netPlace / 2,   placeStake);
+      showOdds  = oddsDisplay(netShow  / 3,   showStake);
+    }
 
     const bg = i % 2 === 0 ? '#162219' : '#1A2820';
     return '<div style="display:grid;grid-template-columns:1fr 58px 58px 58px;gap:3px;align-items:center;padding:5px 6px;background:' + bg + ';border-radius:5px;margin-bottom:2px;">' +
