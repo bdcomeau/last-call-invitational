@@ -6,7 +6,7 @@
 <title>Last Call Invitational — Help</title>
 <style>
   :root{
-    --gd:#0E1A12;--gm:#162219;--gl:#3DB86E;--gp:#d8f3dc;
+    --gd:#0E1A12;--gm:#162219;--gl:#3DB86E;
     --gold:#D4A843;--ink:#1a1a1a;--inkl:#888;
     --red:#c0392b;--white:#fff;--border:#2B4033;
   }
@@ -16,7 +16,7 @@
   header{position:sticky;top:0;background:var(--gd);border-bottom:1px solid rgba(212,168,67,.4);padding:14px 16px;padding-top:max(20px, calc(14px + env(safe-area-inset-top)));display:flex;align-items:center;gap:12px;z-index:10}
   header .back{background:var(--gold);color:var(--gd);border:none;border-radius:18px;padding:7px 14px;font-size:14px;font-weight:800;text-decoration:none;white-space:nowrap}
   header h1{font-family:Georgia,serif;color:var(--gold);font-size:20px;margin:0;flex:1}
-  header .ver{font-size:11px;color:var(--gl)}
+  header .ver{font-size:12px;color:var(--gold);font-weight:700;letter-spacing:1px}
   h2{color:var(--gold);font-size:19px;margin:28px 0 6px;padding-top:8px;border-top:1px solid rgba(212,168,67,.25)}
   h3{color:var(--gl);font-size:15px;margin:16px 0 4px}
   p{margin:8px 0}
@@ -35,6 +35,7 @@
   td:first-child{font-weight:700;color:var(--gold)}
   .top{display:inline-block;margin-top:10px;color:var(--gl);font-size:12px;text-decoration:none}
   code{background:rgba(255,255,255,.1);padding:1px 5px;border-radius:4px;font-size:13px}
+  pre{background:rgba(255,255,255,.06);padding:10px 14px;border-radius:6px;font-size:13px;overflow-x:auto;color:#EDE8DC;margin:10px 0}
   .steps{counter-reset:step}
   .steps li{counter-increment:step;list-style:none;padding-left:4px;margin:10px 0}
   .steps li::before{content:counter(step);background:var(--gold);color:var(--gd);font-weight:800;font-size:12px;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-right:10px;vertical-align:middle}
@@ -44,7 +45,7 @@
 <header>
   <a class="back" href="./">‹ Back</a>
   <h1>Help &amp; Guide</h1>
-  <span class="ver">v17.1</span>
+  <span class="ver">v18.2</span>
 </header>
 <div class="wrap" id="top">
 
@@ -70,7 +71,7 @@
   <a href="#faq">16 · FAQ &amp; Troubleshooting</a>
 </div>
 
-<!-- ─── 1. HOW IT WORKS ─────────────────────────────────────────────────── -->
+<!-- 1 -->
 <h2 id="overview">1 · How Parimutuel Betting Works</h2>
 <p>Unlike fixed-odds betting, parimutuel betting pools all wagers together. The house takes a percentage (if set), and the remainder is split among winning bettors proportional to their stake. Odds are determined by where everyone bets — not set in advance.</p>
 
@@ -81,36 +82,36 @@
   <tr><td>PLACE</td><td>Finishes 1st or 2nd</td></tr>
   <tr><td>SHOW</td><td>Finishes 1st, 2nd, or 3rd</td></tr>
 </table>
-<p>WIN, PLACE, and SHOW are separate pools — money wagered on WIN stays in the WIN pool and is only paid out to WIN bettors, and so on.</p>
 
 <h3>Payout Formula</h3>
-<p>Your payout = <b>(your stake ÷ total winning stakes) × net pool</b>. Payouts are floored to whole dollars — fractions of a dollar go to the house.</p>
+<p>Your payout = <b>(your stake ÷ total winning stakes) × net pool</b>. Payouts are floored to whole dollars.</p>
 <div class="note">💡 Example: WIN pool nets $500. You bet $10 on Alpha to WIN. Total WIN stakes on Alpha = $40. Your payout = (10 ÷ 40) × $500 = <b>$125</b>.</div>
+
+<h3>A Note on Odds</h3>
+<p>It is mathematically possible for a team's SHOW odds to be <b>higher</b> than their WIN odds. This happens when a team is heavily backed to WIN but few people bet them to SHOW — less competition in the SHOW pool means a higher return per dollar. This information is valuable — keep the Live Odds screen passcode-protected.</p>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 2. INSTALLING ───────────────────────────────────────────────────── -->
+<!-- 2 -->
 <h2 id="install">2 · Installing on Your iPhone</h2>
-<p>The app is a web app that installs to your Home Screen and works offline once loaded.</p>
-<div class="warn">⚠️ Install to your Home Screen before using in a live event. If you just open it in a browser tab, your data can be wiped by iOS at any time. Always launch from the Home Screen icon.</div>
-<p><b>How to install:</b></p>
-<ul class="steps">
-  <li>Open the app link in <b>Safari</b> on your iPhone (must be Safari — not Chrome).</li>
+<div class="warn">⚠️ Install to your Home Screen before using at a live event. Opening in a browser tab risks data loss. Always launch from the Home Screen icon.</div>
+<ol class="steps">
+  <li>Open the app URL in <b>Safari</b> (must be Safari, not Chrome).</li>
   <li>Tap the <b>Share</b> button (square with arrow) in the Safari toolbar.</li>
   <li>Scroll down and tap <b>Add to Home Screen</b>.</li>
-  <li>Rename if you like, then tap <b>Add</b> in the top-right corner.</li>
-  <li>Launch from the new Home Screen icon — it opens full-screen.</li>
-</ul>
-<div class="note">Once installed and opened at least once, the app works without a signal. All data is stored on your device — nothing is sent to any server.</div>
+  <li>Rename if you like, then tap <b>Add</b>.</li>
+  <li>Launch from the Home Screen icon — it opens full-screen.</li>
+</ol>
 
-<h3>Keeping the App Current</h3>
-<p>The app checks for updates automatically — 3 seconds after loading, then every 5 minutes. When an update is available a gold banner appears at the top of the screen.</p>
+<h3>Auto Updates</h3>
+<p>The app checks for updates automatically — 3 seconds after loading, then every 5 minutes. A gold banner appears when an update is ready.</p>
 <ul>
-  <li><b>Update Now</b> — clears the service worker cache and reloads the latest version.</li>
-  <li><b>Later</b> — dismisses the banner for this session. Tap it between events, not during a live one.</li>
+  <li><b>Update Now</b> — clears cache and reloads the latest version.</li>
+  <li><b>Later</b> — dismisses for this session. Update between events, not during.</li>
 </ul>
+<div class="note">The version number is shown in gold at the top-right of every screen beside the ? button.</div>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 3. QUICK START ─────────────────────────────────────────────────── -->
+<!-- 3 -->
 <h2 id="quickstart">3 · Quick Start — First Event</h2>
 <ol class="steps">
   <li><b>Create an event</b> — tap EVENTS → enter a name → "+ Create Event".</li>
@@ -124,140 +125,130 @@
 </ol>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 4. EVENTS TAB ──────────────────────────────────────────────────── -->
+<!-- 4 -->
 <h2 id="events">4 · Events Tab</h2>
-<p>Create and manage all your events. The Event Setup panel appears inline below the events list when an active, non-archived event is selected.</p>
+<p>Create and manage all your events. Event Setup appears inline below the events list when an active, non-archived event is selected.</p>
 
 <h3>Events List</h3>
-<p>Tap the count / ▲ to collapse the list and make room. Each event card has action buttons:</p>
+<p>Tap the count / ▲ to collapse. Each event card has:</p>
 <table>
   <tr><th>Button</th><th>What it does</th></tr>
   <tr><td>Open</td><td>Make an inactive event the active one</td></tr>
-  <tr><td>Archive</td><td>Close betting — results are still viewable</td></tr>
+  <tr><td>Archive</td><td>Close betting — results still viewable</td></tr>
   <tr><td>Results</td><td>View results of an archived event</td></tr>
-  <tr><td>⧉ Duplicate</td><td>Copy all teams, bettors, bets and placements into a new named event</td></tr>
+  <tr><td>⧉ Duplicate</td><td>Prompt for a new name, then copy all teams, bettors, bets and placements</td></tr>
   <tr><td>🗑 Delete</td><td>Permanently remove the event</td></tr>
 </table>
 
 <h3>Event Setup (inline)</h3>
-<p>Shows when an active, non-archived event is selected:</p>
 <ul>
   <li><b>Event Name</b> — editable at any time</li>
-  <li><b>Payout Model</b> — Simplified or True Racetrack (see <a href="#payout">Section 13</a>)</li>
-  <li><b>Add Teams</b> — type a name → "+ Add Team", or import a CSV with one name per row</li>
+  <li><b>Payout Model</b> — Simplified or True Racetrack (see <a href="#payout" style="color:var(--gl)">Section 13</a>)</li>
+  <li><b>Add Teams</b> — type a name → "+ Add Team", or import CSV (one name per row). Teams with active bets cannot be deleted. Teams can be <b>renamed</b> at any time using the ✏️ Rename button — all bets update automatically since they reference the team ID, not the name.</li>
   <li><b>Reset Event Data</b> — slide the red button to wipe all teams, bets, and bettors (cannot be undone)</li>
 </ul>
-<div class="tip">Use Duplicate to clone last year's event as a testing sandbox without starting from scratch.</div>
+<div class="tip">Renaming a team is useful when a captain is substituted before play — just rename the team and everything updates instantly everywhere.</div>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 5. BETTORS TAB ─────────────────────────────────────────────────── -->
+<!-- 5 -->
 <h2 id="bettors">5 · Bettors Tab</h2>
 
 <h3>Adding Bettors</h3>
-<p>Enter Full Name (required), Email, and Phone → "+ Add Bettor". Phone and email are used when sharing receipts via iMessage or Mail.</p>
-
-<h3>Editing a Bettor</h3>
-<p>Tap the edit icon on any bettor card to update their name, phone, or email.</p>
+<p>Enter Full Name (required), Email, and Phone → "+ Add Bettor".</p>
 
 <h3>Deleting a Bettor</h3>
-<p>Tap the delete button. If the bettor has active bets, deletion is blocked — go to View Wagers, void their bets, then delete. A confirmation dialog always appears first.</p>
+<p>Tap the delete button. Deletion is <b>blocked</b> if the bettor has active bets — remove their bets on View Wagers first. A confirmation dialog always appears.</p>
 
 <h3>Importing Bettors</h3>
-<p>Scroll to the bottom of the Bettors screen → Choose File. CSV format (header row is skipped automatically):</p>
-<p><code>Name, Cell, Email</code></p>
-<div class="note">Cell and Email are optional columns. Existing bettors with the same name are skipped.</div>
+<p>Scroll to the bottom of the Bettors screen → Choose File.</p>
+<p><code>Name, Cell, Email</code> (Cell and Email optional. Header row skipped automatically.)</p>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 6. PLACE BETS TAB ──────────────────────────────────────────────── -->
+<!-- 6 -->
 <h2 id="placebets">6 · Place Bets Tab</h2>
 
 <h3>Entering a New Bet</h3>
 <ol class="steps">
-  <li><b>Select a bettor</b> from the dropdown. Their previously submitted tickets appear below.</li>
-  <li><b>Fill in the Enter New Bet grid</b> — all teams are shown with WIN / PLACE / SHOW dropdowns. Live odds appear below each team name. Leave a dropdown at $0 to skip that pool.</li>
-  <li><b>Check the totals row</b> at the bottom — WIN / PLACE / SHOW subtotals and Grand Total update as you go.</li>
-  <li><b>Tap "✓ Submit Bets"</b> — a review modal appears showing every bet and the total to collect.</li>
-  <li><b>Collect cash from the bettor</b>, then tap <b>"💵 Cash Received — Confirm"</b>.</li>
-  <li>A <b>ticket number</b> (e.g. <code>LCI-2026-0042</code>) is generated. Write it on the bettor's physical paper sheet.</li>
+  <li><b>Select a bettor</b> from the dropdown. Their submitted tickets appear below.</li>
+  <li><b>Fill in the Enter New Bet grid</b> — all teams listed with WIN / PLACE / SHOW dropdowns. Live odds appear below each team name. Leave at $0 to skip.</li>
+  <li><b>Tap "✓ Submit Bets"</b> — a review modal shows every bet and the total to collect.</li>
+  <li><b>Collect cash</b>, then tap <b>"💵 Cash Received — Confirm"</b>.</li>
+  <li>A <b>ticket number</b> (e.g. <code>LCI-2026-0042</code>) is generated. Write it on the bettor's paper sheet.</li>
   <li>Optionally tap <b>"📤 Share / Print Receipt"</b> to send the bettor a digital copy.</li>
 </ol>
+<div class="warn">⚠️ Once 1st, 2nd, and 3rd place are entered on the Results tab, betting is locked. No new bets can be entered or imported.</div>
 
 <h3>Betting Sheets</h3>
-<p>Print blank paper sheets for bettors to fill in and hand back with cash. Select the number of copies → "🖨 Prepare Sheets" → open in Safari → Print or AirDrop.</p>
+<p>Print blank paper sheets → Select copies → "🖨 Prepare Sheets" → open in Safari → Print or AirDrop.</p>
 
 <h3>Importing Bets</h3>
-<p>Bottom of the Place Bets screen → Choose File. See <a href="#importing">Section 11</a> for CSV format.</p>
-<div class="warn">⚠️ Once all three placements are entered on the Results tab, betting is locked. No new bets can be entered or imported.</div>
+<p>Bottom of Place Bets screen → Choose File. See <a href="#importing" style="color:var(--gl)">Section 11</a>.</p>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 7. VIEW WAGERS TAB ─────────────────────────────────────────────── -->
+<!-- 7 -->
 <h2 id="wagers">7 · View Wagers Tab (Wager Management)</h2>
 
 <h3>Bettor Ticket / Receipt</h3>
-<p>Select a bettor → tap "🖨 Print Ticket" to view their receipt — all bets grouped by ticket number with subtotals and grand total. Tap <b>"📤 Share / Print"</b> to open the iOS share sheet: choose iMessage, AirDrop, Mail, Print, or Save to Files.</p>
+<p>Select a bettor → "🖨 Print Ticket" → view receipt grouped by ticket number. Tap <b>"📤 Share / Print"</b> for the iOS share sheet (iMessage, AirDrop, Mail, Print, Save to Files).</p>
 
 <h3>Tote Board</h3>
-<p>Live pool totals: Total collected, WIN pool, PLACE pool, SHOW pool, and the net payout line after handle.</p>
+<p>Live pool totals: Total, WIN, PLACE, SHOW, and net payout line.</p>
 
-<h3>Live Odds (collapsible)</h3>
-<p>Tap the "📊 LIVE ODDS" header to expand or collapse. Shows estimated return per $1 bet for each team across WIN / PLACE / SHOW. Updates in real time as bets are placed.</p>
-<div class="note">💡 How to read odds: 4.2× means a $10 bet returns approximately $42. Lower odds = more popular team = more competition for the pool.</div>
+<h3>Live Odds (passcode protected)</h3>
+<p>The Live Odds section is <b>collapsed by default</b> and requires a passcode to open. It re-locks automatically every time you leave the Wagers tab.</p>
+<div class="warn">⚠️ Live Odds reveal valuable strategic information — who to bet on, which pools offer value, and when SHOW odds exceed WIN odds on the same team. Keep the passcode confidential and do not share the screen with bettors.</div>
+<p>Tap the "📊 LIVE ODDS" header → enter the passcode → odds expand. Shows estimated return per $1 for each team across WIN / PLACE / SHOW, updated in real time.</p>
+<div class="note">💡 How to read odds: 4.2× means a $10 bet returns approximately $42. Lower odds = more popular team = more competition for that pool slice.</div>
 
 <h3>Wager List</h3>
-<p>All bets sorted A–Z by bettor name. Use the filter bar at the top to search by:</p>
-<ul>
-  <li>Bettor name (e.g. "Bruce")</li>
-  <li>Team name (e.g. "Alpha")</li>
-  <li>Bet type (e.g. "win")</li>
-  <li>Ticket number (e.g. "0042" finds LCI-2026-0042)</li>
-</ul>
+<p>All bets sorted A–Z by bettor. Filter by bettor name, team, bet type, or ticket number (e.g. "0042" finds LCI-2026-0042). Tap ✕ to void a bet.</p>
 
 <h3>🖨 Report</h3>
-<p>Generates a full Wagers Report — pool summary, wagers by team, and all bets by bettor grouped by ticket. Available any time during betting. Opens in Safari for printing or sharing.</p>
-
-<h3>Voiding a Bet</h3>
-<p>Tap ✕ on any bet row. Locked ticket bets (those with a LCI-XXXX number) require triple confirmation, since voiding any bet on a ticket voids the entire ticket.</p>
+<p>Full Wagers Report — pool summary, wagers by team, and all bets by bettor grouped by ticket. Available any time during betting.</p>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 8. RESULTS TAB ─────────────────────────────────────────────────── -->
+<!-- 8 -->
 <h2 id="results">8 · Results Tab</h2>
 
 <h3>Final Placements</h3>
-<p>Select 1st, 2nd, and 3rd place finishing teams from the dropdowns at the top of the Results tab. Once all three are set the full results section appears automatically below.</p>
+<p>Select 1st, 2nd, and 3rd place teams from the dropdowns at the top. Once all three are set, the full results section appears automatically.</p>
 
 <h3>House Take</h3>
-<p>Set before reviewing payouts. Resets to 0% every time you open the Results tab — set it fresh each time.</p>
+<p>Set before reviewing payouts. The house take is deducted <b>proportionally from each pool</b> — WIN, PLACE, and SHOW each contribute their share based on their size relative to the total. This is fairer than taking it all from one pool.</p>
 <table>
   <tr><th>Mode</th><th>How it works</th></tr>
-  <tr><td>% of Pool</td><td>Slide 0–10% to retain that percentage of the total pool</td></tr>
-  <tr><td>Flat $</td><td>Enter a fixed dollar amount to retain regardless of pool size</td></tr>
+  <tr><td>% of Pool</td><td>Retain that percentage of the total pool, split proportionally across WIN/PLACE/SHOW</td></tr>
+  <tr><td>Flat $</td><td>Retain a fixed dollar amount, split proportionally across WIN/PLACE/SHOW</td></tr>
 </table>
+<div class="note">💡 House take is <b>saved</b> once you tap "Prepare Winner Summaries". If you return to this event later, your house take setting is restored automatically.</div>
 
 <h3>Pool Summary</h3>
-<p>Shows Total Collected, House Retained, Win / Place / Show net pools, and Total Paid Out. All values are rounded to whole dollars.</p>
+<p>Total Collected, House Retained, Win / Place / Show net pools, and Total Paid Out — all rounded to whole dollars.</p>
 
-<h3>Bettor Reconciliation</h3>
-<p>Every bettor's wagers, win/loss status, and net gain or loss. Tap <b>"🖨 Full Report"</b> to generate the complete reconciliation report — pool summary, final standings, winners sorted by payout (🥇🥈🥉), final odds by team, and all bets by bettor A–Z.</p>
+<h3>Bettor Reconciliation + Full Report</h3>
+<p>Every bettor's bets, win/loss, and net gain/loss. Tap <b>"🖨 Full Report"</b> for the complete printable report.</p>
 
 <h3>Winner Payout Summary</h3>
-<p>Exactly what each winning bettor is owed. Tap <b>"Open &amp; Print Winner Summaries"</b> to generate printable payout slips.</p>
+<p>Exactly what each winner is owed. Tap <b>"🏆 Prepare Winner Summaries"</b> then <b>"Open &amp; Print"</b> for printable payout slips.</p>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 9. FIELD BETS ──────────────────────────────────────────────────── -->
+<!-- 9 -->
 <h2 id="field">9 · Field Bets</h2>
-<p>A Field bet covers <b>every team simultaneously</b> — if ANY team finishes in the position you bet on, you win. Select <b>🌐 Field</b> from the team list in the bet entry grid.</p>
+<p>A Field bet covers <b>every team simultaneously</b> — if ANY team finishes in the position you bet on, you win. Select <b>🌐 Field</b> from the team list.</p>
 
 <h3>What You Pay</h3>
-<p>The amount you enter is per team. A $5 Field WIN bet with 30 teams = <b>$150 collected</b> from the bettor ($5 × 30). The amount hint on the bet entry screen shows this clearly: <em>"Collect $150 from bettor ($5 × 30 teams)"</em></p>
+<p>The amount you enter is per team. A $5 Field WIN bet with 30 teams = <b>$150 collected</b> ($5 × 30). The amount hint shows this clearly.</p>
 
 <h3>Field Bet Odds</h3>
-<p>Field bets have <b>lower odds</b> than most individual teams — sometimes lower than even the favourite. Here's why: the full $150 enters the WIN pool as the field bettor's stake. The payout formula is <em>your stake ÷ total winning stakes × net pool</em>, so the large stake denominator results in a proportionally modest payout per dollar risked.</p>
+<p>Field bets have <b>lower odds</b> than most individual teams. The full amount ($150) enters the pool as the field bettor's stake. The payout formula <em>stake ÷ total winning stakes × net pool</em> means the large denominator produces a modest return per dollar risked.</p>
 <div class="note">💡 Think of it like betting the field at a horse race — you're nearly guaranteed to win, but you collect much less per dollar because you're competing against yourself across all teams.</div>
+
+<h3>Field Odds Display</h3>
+<p>The Live Odds table shows field odds as the <b>weighted average</b> across all teams — reflecting the typical return a field bettor would receive if a representative team wins.</p>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 10. TICKETS ────────────────────────────────────────────────────── -->
+<!-- 10 -->
 <h2 id="tickets">10 · Ticket Numbers</h2>
-<p>Every confirmed bet sheet gets a unique ticket number:</p>
 <p style="text-align:center;font-size:22px;font-weight:800;color:var(--gold);letter-spacing:4px;margin:16px 0">LCI-2026-0042</p>
 <table>
   <tr><th>Part</th><th>Meaning</th></tr>
@@ -265,27 +256,23 @@
   <tr><td>2026</td><td>Year the event was created</td></tr>
   <tr><td>0042</td><td>4-digit sequential number, unique within the event</td></tr>
 </table>
-<p>Ticket numbers are <b>guaranteed unique</b> — the app scans all existing tickets before issuing a new one, even accounting for any imported tickets.</p>
-
-<h3>After Confirming Cash</h3>
-<p>The confirmation screen shows the ticket number in large type and reminds you: <em>"Record this ticket number on the physical betting sheet and retain for the house's records."</em></p>
-<div class="warn">⚠️ Never hand back the paper sheet without writing the ticket number on it. The ticket number is the only link between the paper sheet and the digital record.</div>
+<p>Ticket numbers are <b>guaranteed unique</b> — the app scans all existing tickets (including any imported ones) before issuing a new one.</p>
+<div class="warn">⚠️ Never hand back the paper sheet without writing the ticket number on it. The ticket number is the only link between the physical sheet and the digital record.</div>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 11. IMPORTING ──────────────────────────────────────────────────── -->
+<!-- 11 -->
 <h2 id="importing">11 · Importing from CSV</h2>
 <p>Export from Excel, Numbers, or Google Sheets as CSV (not .xlsx). Header rows are skipped automatically.</p>
 
-<h3>Import Bettors</h3>
-<p>Bettors tab → bottom of screen → Choose File.</p>
-<code>Name, Cell, Email</code>
-<p>Cell and Email are optional. Existing bettors with the same name are skipped (not duplicated).</p>
+<h3>Import Bettors — bottom of Bettors tab</h3>
+<pre>Name, Cell, Email</pre>
 
-<h3>Import Teams</h3>
-<p>Events tab → Event Setup → Add Teams → Choose File. One team name per row.</p>
+<h3>Import Teams — Events tab → Event Setup → Add Teams</h3>
+<pre>Alpha
+Bravo
+Charlie</pre>
 
-<h3>Import Bets</h3>
-<p>Place Bets tab → bottom of screen → Choose File.</p>
+<h3>Import Bets — bottom of Place Bets tab</h3>
 <table>
   <tr><th>Column</th><th>Required</th><th>Example</th></tr>
   <tr><td>Bettor Name</td><td>Yes</td><td>Bruce Comeau</td></tr>
@@ -295,46 +282,33 @@
   <tr><td>Ticket #</td><td>No</td><td>LCI-2026-0001</td></tr>
 </table>
 <p>Type codes: <code>W</code>=Win · <code>P</code>=Place · <code>S</code>=Show · <code>WP</code>=Win+Place · <code>WPS</code>=Win+Place+Show</p>
-<p>Bettor and Team names must match existing records exactly (case-insensitive). If a ticket number is included, those bets are stamped with it and the counter advances past the highest imported number to avoid collisions.</p>
+<p>Bettor and Team names must match existing records exactly (case-insensitive). If a ticket number is included, the counter advances past the highest imported number to avoid collisions.</p>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 12. RECEIPTS & REPORTS ─────────────────────────────────────────── -->
+<!-- 12 -->
 <h2 id="receipts">12 · Receipts &amp; Reports</h2>
-<p>All receipts and reports open in a Safari tab. Use Safari's share button (box with arrow) to send via iMessage, AirDrop, print, or save to Files.</p>
-
-<h3>Bettor Receipt (Ticket)</h3>
-<p>View Wagers → select a bettor → Print Ticket → Share / Print. Shows all bets grouped by ticket, subtotals per ticket, and grand total. Includes bettor name, event name, and date.</p>
-
-<h3>Wagers Report</h3>
-<p>View Wagers → 🖨 Report. Available any time — even before placements are set. Contains pool summary, wagers by team with WIN / PLACE / SHOW breakdown, and all bets by bettor A–Z with ticket grouping.</p>
-
-<h3>Full Reconciliation Report</h3>
-<p>Results tab → 🖨 Full Report (only available after all three placements are set). Contains:</p>
-<ul>
-  <li>Pool summary with house take applied</li>
-  <li>Final standings (🥇 1st / 🥈 2nd / 🥉 3rd)</li>
-  <li>All winners sorted by payout amount</li>
-  <li>Final odds by team (WIN × / PLACE × / SHOW ×)</li>
-  <li>Every bettor A–Z with all their bets, win/loss indicator, payout, and net gain/loss</li>
-</ul>
-
-<h3>Winner Summary Sheets</h3>
-<p>Results tab → Prepare → Open &amp; Print Winner Summaries. Individual printable payout slips for each winning bettor to hand out when paying.</p>
+<p>All reports open in a Safari tab. Use Safari's share button to send via iMessage, AirDrop, print, or save to Files.</p>
+<table>
+  <tr><th>Report</th><th>Where</th><th>When available</th></tr>
+  <tr><td>Bettor Receipt</td><td>View Wagers → Print Ticket</td><td>Any time</td></tr>
+  <tr><td>Wagers Report</td><td>View Wagers → 🖨 Report</td><td>Any time</td></tr>
+  <tr><td>Full Reconciliation</td><td>Results → 🖨 Full Report</td><td>After placements set</td></tr>
+  <tr><td>Winner Summaries</td><td>Results → Prepare → Open &amp; Print</td><td>After placements set</td></tr>
+</table>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 13. PAYOUT MODELS ──────────────────────────────────────────────── -->
+<!-- 13 -->
 <h2 id="payout">13 · Payout Models</h2>
-<p>Set in Event Setup (Events tab) before betting begins. The model affects how PLACE and SHOW pools are split among winners.</p>
 <table>
   <tr><th>Model</th><th>PLACE Pool</th><th>SHOW Pool</th></tr>
   <tr><td>Simplified</td><td>Split 50/50 — half to 1st-place bettors, half to 2nd-place bettors</td><td>Split into thirds — one third each to 1st, 2nd, 3rd place bettors</td></tr>
   <tr><td>True Racetrack</td><td>Entire pool split among ALL bettors who picked 1st OR 2nd finisher</td><td>Entire pool split among ALL bettors who picked 1st, 2nd, OR 3rd finisher</td></tr>
 </table>
-<div class="note">💡 Simplified is generally fairer for small tournaments where only a few bettors picked the winner. True Racetrack more closely mimics professional horse racing pools.</div>
-<p>All individual payouts are floored to whole dollars — any remaining cents go to the house automatically.</p>
+<div class="note">💡 Simplified is generally fairer for small tournaments. True Racetrack mimics professional horse racing pools.</div>
+<p>All payouts floored to whole dollars. Fractions go to the house. House take is deducted proportionally from each pool before payouts are calculated.</p>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 14. BET TYPES ──────────────────────────────────────────────────── -->
+<!-- 14 -->
 <h2 id="ref">14 · Bet Types Reference</h2>
 <table>
   <tr><th>Type</th><th>Code</th><th>Wins when your team…</th><th>Pool(s)</th></tr>
@@ -345,69 +319,61 @@
   <tr><td>Win + Place + Show</td><td>WPS</td><td>Three separate bets on same team</td><td>WIN + PLACE + SHOW</td></tr>
   <tr><td>Field</td><td>🌐</td><td>ANY team finishes in that position</td><td>Whichever pool you chose</td></tr>
 </table>
-<p>WP and WPS are convenience entries — they create individual WIN, PLACE, and SHOW bets on the same team and collect the combined amount from the bettor in one step.</p>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 15. CSV FORMATS ────────────────────────────────────────────────── -->
+<!-- 15 -->
 <h2 id="csv">15 · CSV Format Reference</h2>
-
 <h3>Bettors</h3>
-<pre style="background:rgba(255,255,255,.06);padding:10px 14px;border-radius:6px;font-size:13px;overflow-x:auto;color:#EDE8DC">Name,Cell,Email
+<pre>Name,Cell,Email
 Bruce Comeau,780-915-4081,bruce@example.com
 Doug Comeau,780-555-1234,</pre>
 
 <h3>Teams</h3>
-<pre style="background:rgba(255,255,255,.06);padding:10px 14px;border-radius:6px;font-size:13px;overflow-x:auto;color:#EDE8DC">Alpha
+<pre>Alpha
 Bravo
 Charlie
 Delta</pre>
 
 <h3>Bets</h3>
-<pre style="background:rgba(255,255,255,.06);padding:10px 14px;border-radius:6px;font-size:13px;overflow-x:auto;color:#EDE8DC">Bettor Name,Team Name,Type,Amount,Ticket
+<pre>Bettor Name,Team Name,Type,Amount,Ticket
 Bruce Comeau,Alpha,WIN,50,LCI-2026-0001
 Bruce Comeau,Alpha,PLACE,50,LCI-2026-0001
 Doug Comeau,Bravo,WPS,25,LCI-2026-0002
 Alice Smith,Charlie,S,10,</pre>
-
-<div class="note">The Ticket column is optional. Rows without a ticket number are imported as unassigned bets and still appear in receipts and reports.</div>
 <a class="top" href="#top">↑ Back to top</a>
 
-<!-- ─── 16. FAQ ─────────────────────────────────────────────────────────── -->
+<!-- 16 -->
 <h2 id="faq">16 · FAQ &amp; Troubleshooting</h2>
 
-<h3>Can I add bets after the event has started?</h3>
-<p>Yes — bets can be added any time until the final placements (1st / 2nd / 3rd) are entered on the Results tab. Once all three are set, betting is locked and import is blocked.</p>
+<h3>Can I add bets after the event starts?</h3>
+<p>Yes — until all three placements are entered on the Results tab. Once set, betting is locked.</p>
+
+<h3>Can I rename a team after bets are placed?</h3>
+<p>Yes — tap ✏️ Rename on any team in Event Setup. The new name appears everywhere immediately because all bets reference the team by ID, not name.</p>
+
+<h3>Why can't I delete a team?</h3>
+<p>Teams with active bets cannot be deleted. Remove those bets on View Wagers first.</p>
 
 <h3>Can I fix a wrong bet amount?</h3>
-<p>Void the bet on the View Wagers tab (tap ✕), then re-enter it correctly. Locked ticket bets require triple confirmation before voiding — it voids the entire ticket.</p>
+<p>Void the bet on View Wagers (tap ✕), then re-enter it. Locked ticket bets require triple confirmation — voiding any bet on a ticket voids the entire ticket.</p>
 
-<h3>Can I run multiple events?</h3>
-<p>Yes — each event is completely independent with its own teams, bettors, and bets. Switch between events on the Events tab. Only one event can be active at a time.</p>
+<h3>The house take reset when I switched events</h3>
+<p>House take is saved to the event once you tap "Prepare Winner Summaries". Before that it resets to 0% each visit so you always set it deliberately. Tap Prepare to lock it in.</p>
 
-<h3>What if I accidentally delete data?</h3>
-<p>Data stored in your device's localStorage cannot be recovered once deleted. Export a backup of important events by duplicating them (Events → ⧉ Duplicate) so you always have a copy.</p>
+<h3>Why does SHOW pay more than WIN on the same team?</h3>
+<p>The WIN and SHOW pools are separate. If a team is heavily backed to WIN but few people bet them to SHOW, the SHOW stake is small and the return per dollar is higher. This is mathematically correct and is intentional parimutuel behaviour.</p>
 
-<h3>The app shows "Update available" during the event</h3>
-<p>Tap <b>Later</b> to dismiss the banner. Apply updates between events to avoid any interruption to live betting.</p>
-
-<h3>The placement dropdowns don't show any teams</h3>
-<p>Teams must be added first via Event Setup (Events tab → Event Setup → Add Teams). If no teams exist, the dropdowns will be empty.</p>
-
-<h3>A bettor's name shows "?" in results</h3>
-<p>This happens when a bet references a bettor ID that no longer exists (e.g. the bettor was deleted). Restore the bettor on the Bettors tab with the same name, or note it in your manual records.</p>
-
-<h3>The Field bet payout seems too low</h3>
-<p>That's correct — see <a href="#field">Section 9</a>. A field bet backs all 30 teams, so a $5 bet contributes $150 to the pool. The large stake in the denominator means a lower return per dollar, similar to betting a heavy favourite.</p>
-
-<h3>Where is my data stored?</h3>
-<p>All data is stored in your browser's <code>localStorage</code> under the key <code>lci-v4</code>. It never leaves your device and is never sent to any server. Do not clear browser/website data while running a live event.</p>
+<h3>What does the field odds number represent?</h3>
+<p>The weighted average return across all teams — approximately what you'd collect per dollar if a typical team wins. Field bets generally have lower odds than individual teams because the large pooled stake reduces the return.</p>
 
 <h3>The app is frozen / buttons don't respond</h3>
-<p>Force-close the app (swipe up in the iOS app switcher) and reopen from the Home Screen icon. If it persists, check the version number (shown at the top-right beside the ? button) and use the Update banner if an update is available.</p>
+<p>Force-close the app (swipe up in the iOS app switcher) and reopen from the Home Screen icon. Check the version number (gold, top-right) and update if a banner appeared.</p>
+
+<h3>Where is my data stored?</h3>
+<p>All data is in your browser's <code>localStorage</code> under key <code>lci-v4</code>. It never leaves your device. Do not clear browser data during a live event.</p>
 
 <a class="top" href="#top">↑ Back to top</a>
-
-<p style="text-align:center;color:rgba(255,255,255,.3);font-size:11px;margin-top:30px">Last Call Invitational · Parimutuel Betting System · v17.1</p>
+<p style="text-align:center;color:rgba(255,255,255,.3);font-size:11px;margin-top:30px">Last Call Invitational · Parimutuel Betting System · v18.2</p>
 
 </div>
 </body>
