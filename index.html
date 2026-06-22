@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:8px;">
-    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.0</span>
+    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.1</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -721,7 +721,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v19.0: migrate missing house take fields
+        // v19.1: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1457,7 +1457,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v19.0';
+const APP_VERSION = 'v19.1';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -3009,7 +3009,7 @@ function showEntryReview(betsToAdd, bettor, grand, bettorId) {
     '<div style="font-size:12px;color:#E05252;font-weight:700;text-align:center;margin-bottom:14px;">Verify this matches the paper sheet before confirming cash ↓</div>' +
     '<div style="display:flex;gap:10px;">' +
       '<button class="btn btn-danger" style="flex:1;" onclick="closeReview()">✕ Cancel — Fix Entry</button>' +
-      '<button class="btn btn-primary" style="flex:1;" onclick="confirmCash()">💵 Cash Received — Confirm</button>' +
+      '<button class="btn btn-primary" style="flex:1;" onclick="confirmCash()">💵 Collect Cash &amp; Issue Ticket</button>' +
     '</div>';
 
   overlay.style.display = 'flex';
@@ -3026,15 +3026,8 @@ function confirmCash() {
   const { betsToAdd, bettor, grand, bettorId } = _pendingEntry;
   _pendingEntry = null;
   closeReview();
-  if (!confirm(
-    '💵 FINAL CASH CONFIRMATION\n\n' +
-    'Bettor: ' + (bettor ? bettor.name : '?') + '\n' +
-    'Amount: ' + fmt(grand) + '\n\n' +
-    'Do you confirm cash in hand matches this amount?\n' +
-    'This will LOCK the ticket — deletion requires triple override.'
-  )) return;
 
-  // Cash confirmed — now generate the ticket ref and lock the bets
+  // Cash confirmed — generate ticket ref and lock the bets
   const ticketRef = genTicketRef();
   betsToAdd.forEach(b => {
     state.bets.push({
@@ -3058,7 +3051,7 @@ function confirmCash() {
   const ev2 = activeEvent();
   const nextNum2 = ev2 ? (ev2.nextTicketNum || 1) : 1;
   const refEl = document.getElementById('entry-ticket-ref');
-  const _year2 = new Date(ev ? (ev.createdAt || Date.now()) : Date.now()).getFullYear();
+  const _year2 = new Date(ev2 ? (ev2.createdAt || Date.now()) : Date.now()).getFullYear();
   if (refEl) refEl.textContent = 'Next ticket #: LCI-' + _year2 + '-' + String(nextNum2).padStart(4,'0');
 
   // Show ticket number prominently so operator can write it on the paper sheet
