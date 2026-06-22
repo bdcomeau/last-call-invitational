@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:6px;">
-    <span id="header-version" style="font-size:10px;color:#2B4033;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;">v17.8</span>
+    <span id="header-version" style="font-size:10px;color:#2B4033;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;">v18.0</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -469,9 +469,9 @@
       <div class="card" id="odds-card" style="display:none;">
         <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleOdds()">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:#8F6E2A;letter-spacing:2px;">📊 LIVE ODDS — ESTIMATED RETURN PER $1 BET</div>
-          <span id="odds-toggle-icon" style="font-size:16px;color:#8F6E2A;user-select:none;">▲</span>
+          <span id="odds-toggle-icon" style="font-size:16px;color:#8F6E2A;user-select:none;">▼</span>
         </div>
-        <div id="odds-body">
+        <div id="odds-body" style="display:none;">
           <div style="display:grid;grid-template-columns:1fr 58px 58px 58px;gap:3px;margin:10px 0 4px;padding:0 6px;">
             <div style="font-size:9px;color:#7A9E89;letter-spacing:1px;">TEAM</div>
             <div style="font-size:9px;color:#3DB86E;text-align:center;letter-spacing:1px;">WIN</div>
@@ -721,7 +721,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v17.8: migrate missing house take fields
+        // v18.0: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1463,7 +1463,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v17.8';
+const APP_VERSION = 'v18.0';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -1790,13 +1790,32 @@ function showHelp() {
   window.open('https://bdcomeau.github.io/last-call-invitational/lci-manual.html', '_blank');
 }
 
+const ODDS_PASSCODE = '0000';
+let _oddsUnlocked = false;
+
 function toggleOdds() {
   const body = document.getElementById('odds-body');
   const icon = document.getElementById('odds-toggle-icon');
   if (!body) return;
   const collapsed = body.style.display === 'none';
-  body.style.display = collapsed ? '' : 'none';
-  if (icon) icon.textContent = collapsed ? '▲' : '▼';
+  if (collapsed) {
+    // Require passcode to expand
+    if (!_oddsUnlocked) {
+      const entry = prompt('🔒 Enter passcode to view Live Odds:');
+      if (entry === null) return; // cancelled
+      if (entry !== ODDS_PASSCODE) {
+        alert('Incorrect passcode.');
+        return;
+      }
+      _oddsUnlocked = true;
+    }
+    body.style.display = '';
+    if (icon) icon.textContent = '▲';
+  } else {
+    body.style.display = 'none';
+    if (icon) icon.textContent = '▼';
+    _oddsUnlocked = false; // re-lock when collapsed
+  }
 }
 
 function updateOdds() {
