@@ -414,7 +414,8 @@
           Bulk-load bets from a spreadsheet exported as CSV.
         </div>
         <div style="font-size:10px;color:#7A9E89;margin-bottom:10px;line-height:1.6;">
-          4 columns: <strong style="color:#EDE8DC;">Bettor Name · Team Name · Type (W P S WP WPS) · Amount</strong>
+          4 columns: <strong style="color:#EDE8DC;">Bettor Name · Team Name · Type (W P S WP WPS) · Amount</strong><br/>
+          Optional 5th column: <strong style="color:#EDE8DC;">Ticket # (e.g. LCI-2025-0001)</strong>
         </div>
         <input type="file" id="import-bets-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBets(this)" />
         <div id="import-bets-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;margin-top:6px;"></div>
@@ -576,7 +577,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v14.3</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v14.4</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -702,7 +703,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v14.3: migrate missing house take fields
+        // v14.4: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1359,7 +1360,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v14.3';
+const APP_VERSION = 'v14.4';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -3361,6 +3362,7 @@ async function importBets(input) {
     const teamRaw   = String(row[1]||'').trim();
     const typeRaw   = String(row[2]||'').trim().toLowerCase();
     const amountRaw = parseFloat(row[3]);
+    const ticketRaw = String(row[4]||'').trim() || null;  // optional 5th column
     if (!bettorRaw && !teamRaw && !typeRaw) return;
 
     // Skip header row — if first cell looks like a column label
@@ -3381,9 +3383,22 @@ async function importBets(input) {
     const betTypes = comboType === 'win-place' ? ['win','place'] :
                      comboType === 'win-place-show' ? ['win','place','show'] : [comboType];
     const comboGroupId = betTypes.length > 1 ? uid() : null;
+
+    // If ticket number provided, track the highest nextTicketNum
+    if (ticketRaw) {
+      const numMatch = ticketRaw.match(/(\d+)$/);
+      if (numMatch) {
+        const n = parseInt(numMatch[1]) + 1;
+        const ev = activeEvent();
+        if (ev && n > (ev.nextTicketNum || 1)) ev.nextTicketNum = n;
+      }
+    }
+
     betTypes.forEach(t => {
       state.bets.push({ id: uid(), bettorId: bettor.id, teamId: team.id, type: t,
-                        amount: amountRaw, combo: betTypes.length > 1 ? comboType : null, comboGroupId });
+                        amount: amountRaw, locked: !!ticketRaw,
+                        ticketRef: ticketRaw || undefined,
+                        combo: betTypes.length > 1 ? comboType : null, comboGroupId });
     });
     added++;
   });
