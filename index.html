@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:6px;">
-    <span id="header-version" style="font-size:10px;color:#2B4033;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;">v18.0</span>
+    <span id="header-version" style="font-size:10px;color:#2B4033;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;">v18.1</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -721,7 +721,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v18.0: migrate missing house take fields
+        // v18.1: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -782,6 +782,14 @@ function showTab(tab) {
     if (tab === 'placements') renderPlacements();
     if (tab === 'results')    { renderPlacements(); renderResults(); }
     // Reset persistent print buttons when switching away from their tabs
+    if (tab !== 'wagers') {
+      // Collapse and re-lock odds whenever leaving the Wagers tab
+      const oddsBody = document.getElementById('odds-body');
+      const oddsIcon = document.getElementById('odds-toggle-icon');
+      if (oddsBody) oddsBody.style.display = 'none';
+      if (oddsIcon) oddsIcon.textContent = '▼';
+      _oddsUnlocked = false;
+    }
     if (tab !== 'results') {
       renderResults._houseTakeInitialized = false; // reset so house take starts at 0% next visit
       const lb = document.getElementById('label-print-btn');
@@ -1463,7 +1471,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v18.0';
+const APP_VERSION = 'v18.1';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
