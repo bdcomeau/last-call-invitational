@@ -379,11 +379,6 @@
           <div class="field"><label>Email</label><input type="email" id="new-bettor-email" placeholder="jane@example.com" /></div>
           <div class="field"><label>Phone</label><input type="tel" id="new-bettor-phone" placeholder="555-867-5309" /></div>
           <button class="btn btn-primary" onclick="addBettor()">+ Add Bettor</button>
-          <div class="divider"></div>
-          <div style="font-size:11px;color:#7A9E89;text-align:center;">— or import a list —</div>
-          <div style="font-size:10px;color:#7A9E89;text-align:center;">Save as <strong style="color:#EDE8DC;">CSV</strong> from Excel/Numbers first</div><div style="font-size:10px;color:#7A9E89;text-align:center;">4 columns: <strong style="color:#EDE8DC;">Name · Cell · Email</strong> (cell &amp; email optional)</div>
-          <input type="file" id="import-bettors-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBettors(this)" />
-          <div id="import-bettors-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;"></div>
         </div>
       </div>
       <!-- Edit bettor modal -->
@@ -407,6 +402,17 @@
         <input type="text" class="bare" id="bettor-search" placeholder="🔍  Search bettors…" oninput="renderBettors()" style="margin-bottom:10px;" />
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;" id="bettors-count"></div>
         <div class="scroll-list" id="bettors-list"></div>
+      </div>
+
+      <!-- Import bettors — at the bottom -->
+      <div class="card">
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">📥 IMPORT BETTORS FROM CSV</div>
+        <div style="font-size:10px;color:#7A9E89;margin-bottom:10px;line-height:1.6;">
+          Save as <strong style="color:#EDE8DC;">CSV</strong> from Excel/Numbers first<br/>
+          3 columns: <strong style="color:#EDE8DC;">Name · Cell · Email</strong> (cell &amp; email optional)
+        </div>
+        <input type="file" id="import-bettors-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBettors(this)" />
+        <div id="import-bettors-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;margin-top:6px;"></div>
       </div>
     </div>
 
@@ -679,7 +685,7 @@
       </div>
     </div>
 
-  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v15.0</div>
+  <div style="text-align:center;padding:6px 0 2px;font-size:10px;color:#2B4033;letter-spacing:1px;">v15.2</div>
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -803,7 +809,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v15.0: migrate missing house take fields
+        // v15.2: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1482,7 +1488,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v15.0';
+const APP_VERSION = 'v15.2';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -1679,8 +1685,18 @@ function saveBettorEdit() {
 }
 
 function removeBettor(id) {
+  const bettor   = state.bettors.find(b => b.id === id);
+  const name     = bettor ? bettor.name : 'this bettor';
+  const betCount = state.bets.filter(b => b.bettorId === id).length;
+
+  if (betCount > 0) {
+    alert('⛔ Cannot delete ' + name + ' — they have ' + betCount + ' active bet' + (betCount !== 1 ? 's' : '') + '.\n\nRemove their bets on the View Wagers tab first, then delete the bettor.');
+    return;
+  }
+
+  if (!confirm('Delete ' + name + '? This cannot be undone.')) return;
+
   state.bettors = state.bettors.filter(b => b.id !== id);
-  state.bets = state.bets.filter(b => b.bettorId !== id);
   save(); renderBettors(); updateHeader();
 }
 
