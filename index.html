@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:8px;">
-    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v18.4</span>
+    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v18.6</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -721,7 +721,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v18.4: migrate missing house take fields
+        // v18.6: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1471,7 +1471,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v18.4';
+const APP_VERSION = 'v18.6';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -2639,18 +2639,27 @@ function printFullReport() {
   setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
 }
 
-// Inject a gold print bar into any HTML page opened as a blob URL
+// Inject a gold print/share bar into any HTML page opened as a blob URL
 function injectPrintButton(html, label) {
   label = label || '🖨 Print';
-  const bar = '<div class="no-print" style="position:fixed;top:0;left:0;right:0;background:#D4A843;padding:10px 16px;text-align:center;z-index:9999;display:flex;align-items:center;justify-content:center;gap:16px;">' +
-    '<button onclick="window.print()" style="background:#162219;color:#D4A843;border:none;border-radius:8px;padding:10px 28px;font-size:17px;font-weight:800;cursor:pointer;">' + label + '</button>' +
-    '<span style="font-size:13px;color:#162219;font-weight:600;">Tap to print or save as PDF</span>' +
-    '</div><div class="no-print" style="height:52px;"></div>';
+  const shareScript = '<script>' +
+    'function _lciShare(){' +
+      'var f=new File([new Blob([document.documentElement.outerHTML],{type:"text/html"})],"lci-doc.html",{type:"text/html"});' +
+      'if(navigator.canShare&&navigator.canShare({files:[f]})){' +
+        'navigator.share({files:[f],title:document.title}).catch(function(e){if(e.name!=="AbortError")alert("Share failed.");});' +
+      '}else if(navigator.share){' +
+        'navigator.share({title:document.title,url:window.location.href}).catch(function(){});' +
+      '}else{alert("Sharing not supported on this browser.");}' +
+    '}' +
+  '<\/script>';
+  const bar = '<div class="no-print" style="position:fixed;top:0;left:0;right:0;background:#D4A843;padding:10px 16px;z-index:9999;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;">' +
+    '<button onclick="window.print()" style="background:#162219;color:#D4A843;border:none;border-radius:8px;padding:10px 22px;font-size:16px;font-weight:800;cursor:pointer;">' + label + '</button>' +
+    '<button onclick="_lciShare()" style="background:#fff;color:#162219;border:none;border-radius:8px;padding:10px 22px;font-size:16px;font-weight:800;cursor:pointer;">📤 Share</button>' +
+  '</div><div class="no-print" style="height:52px;"></div>';
   const printCSS = '<style>@media print{.no-print{display:none!important}}</style>';
-  // Insert bar after <body> tag, add print CSS in <head>
   return html
-    .replace(/<body([^>]*)>/i, '<body$1>' + bar)
-    .replace(/<\/head>/i, printCSS + '</head>');
+    .replace(/<\/head>/i, printCSS + shareScript + '</head>')
+    .replace(/<body([^>]*)>/i, '<body$1>' + bar);
 }
 
 function openReceiptTab(html) {
