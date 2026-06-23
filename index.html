@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:8px;">
-    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v20.3</span>
+    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v20.4</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -876,7 +876,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v20.3: migrate missing house take fields
+        // v20.4: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1657,7 +1657,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v20.3';
+const APP_VERSION = 'v20.4';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -3960,7 +3960,7 @@ function renderResults() {
   }).join('');
 
   document.getElementById('balance-msg').innerHTML = balanced
-    ? '<span style="color:#3DB86E;">✓ Books balanced</span><span style="display:block;font-size:10px;color:#7A9E89;font-weight:400;margin-top:2px;">Model: ' + (mode === 'racetrack' ? 'True Racetrack' : 'Simplified') + '</span>'
+    ? '<span style="color:#3DB86E;">✓ Books balanced</span><span style="display:block;font-size:10px;color:#7A9E89;font-weight:400;margin-top:2px;">Model: ' + ((ev && ev.payoutMode === 'racetrack') ? 'True Racetrack' : 'Simplified') + '</span>'
     : '<span style="color:#E05252;">⚠ Reconciliation issue</span>';
 
   // Build bettor map
@@ -4046,10 +4046,8 @@ function toggleRecon() {
   const open = body.style.display === 'none';
   body.style.display = open ? '' : 'none';
   if (icon) icon.textContent = open ? '▲' : '▼';
-  // If opening and data isn't ready yet, trigger a full render
-  if (open && !renderResults._sortedBettors) renderResults();
-  // If opening and data is ready, just re-render the list
-  else if (open) _renderReconList();
+  // Always re-render when opening to guarantee fresh data
+  if (open) renderResults();
 }
 function setReconFilter(f) {
   _reconFilter = f;
@@ -4057,11 +4055,17 @@ function setReconFilter(f) {
     const btn = document.getElementById('recon-filter-' + k);
     if (!btn) return;
     const active = k === f;
-    btn.style.background    = active ? '#D4A843' : 'transparent';
-    btn.style.color         = active ? '#111' : '#7A9E89';
-    btn.style.borderColor   = active ? '#D4A843' : '#2B4033';
+    btn.style.background  = active ? '#D4A843' : 'transparent';
+    btn.style.color       = active ? '#111' : '#7A9E89';
+    btn.style.borderColor = active ? '#D4A843' : '#2B4033';
   });
-  _renderReconList();
+  // Always call full renderResults to guarantee data is current
+  renderResults();
+  // Then make sure recon section stays open
+  const body = document.getElementById('recon-body');
+  const icon = document.getElementById('recon-toggle-icon');
+  if (body) body.style.display = '';
+  if (icon) icon.textContent = '▲';
 }
 function _renderReconList() {
   const list = document.getElementById('recon-list');
