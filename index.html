@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:8px;">
-    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v20.1</span>
+    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v20.2</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -876,7 +876,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v20.1: migrate missing house take fields
+        // v20.2: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1657,7 +1657,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v20.1';
+const APP_VERSION = 'v20.2';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -4063,22 +4063,28 @@ function _renderReconList() {
   const list = document.getElementById('recon-list');
   if (!list || !renderResults._sortedBettors) return;
   const sortedBettors = renderResults._sortedBettors;
+
   const filtered = sortedBettors.filter(function(e) {
     if (_reconFilter === 'winners') return e[1].payout > 0;
     if (_reconFilter === 'losers')  return e[1].payout === 0;
     return true;
   });
-  // Update header label
+
+  // Update header label with winner/total counts
+  const winnerCount = sortedBettors.filter(function(e){ return e[1].payout > 0; }).length;
   const lbl = document.getElementById('recon-header-label');
-  if (lbl) lbl.textContent = 'STEP 5 · BETTOR RECONCILIATION (' + filtered.length + ')';
+  if (lbl) lbl.textContent = 'STEP 5 · ' + winnerCount + ' WINNERS of ' + sortedBettors.length + ' BETTORS';
+
+  if (!filtered.length) {
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:#7A9E89;font-size:13px;">No bettors match this filter.</div>';
+    return;
+  }
 
   list.innerHTML = filtered.map(function(entry) {
-  document.getElementById('recon-list').innerHTML = sortedBettors.map(function(entry) {
     const id = entry[0], s = entry[1];
     const bettor  = bettorById(id);
     const netGain = Math.round((s.payout - s.wagered) * 100) / 100;
 
-    // Group bets by ticketRef
     const ticketGroups = {};
     const ungrouped = [];
     s.bets.forEach(function(b) {
@@ -4126,7 +4132,20 @@ function _renderReconList() {
     '</div>';
   }).join('');
 
-}).join('');
+  // Totals
+  const tc  = renderResults._totalCollected || 0;
+  const tp  = renderResults._totalPayout    || 0;
+  const hr  = renderResults._houseRetained  || 0;
+  const bal = renderResults._balanced;
+  const totEl = document.getElementById('recon-totals');
+  const balEl = document.getElementById('recon-balance');
+  if (totEl) totEl.innerHTML =
+    '<div>Collected: <strong style="color:#EDE8DC;">' + fmt(tc) + '</strong></div>' +
+    '<div>Paid out: <strong style="color:#3DB86E;">' + fmt(tp) + '</strong></div>' +
+    '<div>House: <strong style="color:#E05252;">' + fmt(hr) + '</strong></div>';
+  if (balEl) balEl.innerHTML = bal
+    ? '<span style="color:#3DB86E;">✓ BALANCED</span>'
+    : '<span style="color:#E05252;">⚠ CHECK</span>';
 }
 
 
