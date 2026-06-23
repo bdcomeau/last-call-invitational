@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:8px;">
-    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.3</span>
+    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.4</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -330,16 +330,38 @@
     <!-- BETTORS -->
     <div class="screen" id="screen-bettors">
       <div class="section-head">👥 Bettors</div>
-      <div class="card">
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <div class="field"><label>Full Name *</label><input type="text" id="new-bettor-name" placeholder="Jane Doe" /></div>
-          <div class="field"><label>Email</label><input type="email" id="new-bettor-email" placeholder="jane@example.com" /></div>
-          <div class="field"><label>Phone</label><input type="tel" id="new-bettor-phone" placeholder="555-867-5309" /></div>
-          <button class="btn btn-primary" onclick="addBettor()">+ Add Bettor</button>
+
+      <!-- Search — always visible at top -->
+      <div style="position:sticky;top:0;z-index:5;background:#0E1A12;padding:8px 0 6px;">
+        <input type="text" class="bare" id="bettor-search" placeholder="🔍  Search by name, phone or email…"
+               oninput="renderBettors()"
+               style="width:100%;background:#162219;border:1px solid #2B4033;border-radius:10px;padding:10px 14px;font-size:14px;color:#EDE8DC;" />
+      </div>
+
+      <!-- Bettor count + Add toggle -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 2px 4px;">
+        <div style="font-size:11px;color:#7A9E89;" id="bettors-count"></div>
+        <button id="add-bettor-toggle-btn" class="btn btn-ghost" style="font-size:12px;padding:5px 14px;" onclick="toggleAddBettor()">➕ Add Bettor</button>
+      </div>
+
+      <!-- Add bettor form — collapsed by default -->
+      <div id="add-bettor-form" style="display:none;">
+        <div class="card" style="border-color:#D4A84344;">
+          <div style="font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">NEW BETTOR</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div class="field"><label>Full Name *</label><input type="text" id="new-bettor-name" placeholder="Jane Doe" /></div>
+            <div class="field"><label>Email</label><input type="email" id="new-bettor-email" placeholder="jane@example.com" /></div>
+            <div class="field"><label>Phone</label><input type="tel" id="new-bettor-phone" placeholder="555-867-5309" /></div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost" style="flex:1;" onclick="toggleAddBettor()">Cancel</button>
+              <button class="btn btn-primary" style="flex:1;" onclick="addBettor()">+ Add Bettor</button>
+            </div>
+          </div>
         </div>
       </div>
+
       <!-- Edit bettor modal -->
-      <div id="bettor-edit-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000000CC;z-index:200;display:none;align-items:center;justify-content:center;padding:20px;">
+      <div id="bettor-edit-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000000CC;z-index:200;align-items:center;justify-content:center;padding:20px;">
         <div style="background:#1E2E23;border-radius:14px;padding:20px;width:100%;max-width:400px;border:1px solid #2B4033;">
           <div style="font-family:Barlow Condensed,sans-serif;font-size:13px;color:#8F6E2A;letter-spacing:2px;margin-bottom:14px;">EDIT BETTOR</div>
           <div style="display:flex;flex-direction:column;gap:10px;">
@@ -355,14 +377,22 @@
         </div>
       </div>
 
-      <div class="card" id="bettors-card" style="display:none;">
-        <input type="text" class="bare" id="bettor-search" placeholder="🔍  Search bettors…" oninput="renderBettors()" style="margin-bottom:10px;" />
-        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;" id="bettors-count"></div>
-        <div class="scroll-list" id="bettors-list"></div>
+      <!-- Bettor list with A-Z groups -->
+      <div id="bettors-card" style="display:none;">
+        <div id="bettors-list"></div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="bettors-empty" style="display:none;">
+        <div class="card" style="text-align:center;padding:32px 20px;border-style:dashed;">
+          <div style="font-size:36px;margin-bottom:10px;">👥</div>
+          <div style="font-size:14px;color:#EDE8DC;font-weight:700;margin-bottom:6px;">No bettors yet</div>
+          <div style="font-size:12px;color:#7A9E89;">Tap ➕ Add Bettor above or import from CSV below.</div>
+        </div>
       </div>
 
       <!-- Import bettors — at the bottom -->
-      <div class="card">
+      <div class="card" style="margin-top:8px;">
         <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">📥 IMPORT BETTORS FROM CSV</div>
         <div style="font-size:10px;color:#7A9E89;margin-bottom:10px;line-height:1.6;">
           Save as <strong style="color:#EDE8DC;">CSV</strong> from Excel/Numbers first<br/>
@@ -742,7 +772,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v19.3: migrate missing house take fields
+        // v19.4: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -798,6 +828,7 @@ function showTab(tab) {
     });
     window.scrollTo(0, 0);
     if (tab === 'events')     { renderEvents(); updateActiveEventSetup(); }
+    if (tab === 'bettors')    renderBettors();
     if (tab === 'entry')      loadEntryTab();
     if (tab === 'wagers')     { renderBetDropdowns(); renderWagers(); updateTote(); }
     if (tab === 'placements') renderPlacements();
@@ -1514,7 +1545,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v19.3';
+const APP_VERSION = 'v19.4';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -1693,9 +1724,14 @@ function addBettor() {
     email: document.getElementById('new-bettor-email').value.trim(),
     phone: document.getElementById('new-bettor-phone').value.trim()
   });
-  document.getElementById('new-bettor-name').value = '';
+  document.getElementById('new-bettor-name').value  = '';
   document.getElementById('new-bettor-email').value = '';
   document.getElementById('new-bettor-phone').value = '';
+  // Collapse the form after adding
+  const form = document.getElementById('add-bettor-form');
+  const btn  = document.getElementById('add-bettor-toggle-btn');
+  if (form) form.style.display = 'none';
+  if (btn)  btn.style.display  = '';
   save(); renderBettors(); updateHeader();
 }
 
@@ -1747,39 +1783,93 @@ function removeBettor(id) {
   save(); renderBettors(); updateHeader();
 }
 
+function toggleAddBettor() {
+  const form = document.getElementById('add-bettor-form');
+  const btn  = document.getElementById('add-bettor-toggle-btn');
+  if (!form) return;
+  const open = form.style.display === 'none' || form.style.display === '';
+  if (open && form.style.display === 'none') {
+    form.style.display = '';
+    if (btn) btn.style.display = 'none';
+    const nameEl = document.getElementById('new-bettor-name');
+    if (nameEl) setTimeout(() => nameEl.focus(), 50);
+  } else {
+    form.style.display = 'none';
+    if (btn) btn.style.display = '';
+  }
+}
+
 function renderBettors() {
-  const card = document.getElementById('bettors-card');
-  const list = document.getElementById('bettors-list');
-  const count = document.getElementById('bettors-count');
-  if (!state.bettors.length) { card.style.display = 'none'; return; }
-  card.style.display = '';
-  const search = document.getElementById('bettor-search').value.toLowerCase();
+  const card      = document.getElementById('bettors-card');
+  const list      = document.getElementById('bettors-list');
+  const countEl   = document.getElementById('bettors-count');
+  const emptyEl   = document.getElementById('bettors-empty');
+  if (!list) return;
+
+  const searchEl = document.getElementById('bettor-search');
+  const search   = searchEl ? searchEl.value.toLowerCase() : '';
+
+  if (!state.bettors.length) {
+    if (card)    card.style.display    = 'none';
+    if (emptyEl) emptyEl.style.display = '';
+    if (countEl) countEl.textContent   = '';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+
   const filtered = state.bettors
     .filter(b =>
       b.name.toLowerCase().includes(search) ||
-      b.email.toLowerCase().includes(search) ||
-      b.phone.includes(search)
+      (b.email||'').toLowerCase().includes(search) ||
+      (b.phone||'').includes(search)
     )
     .sort((a, b) => a.name.localeCompare(b.name));
-  count.textContent = filtered.length + ' of ' + state.bettors.length + ' bettors';
-  list.innerHTML = filtered.map(b => {
+
+  if (countEl) countEl.textContent = filtered.length + ' of ' + state.bettors.length + ' bettors';
+
+  if (!filtered.length) {
+    if (card) card.style.display = '';
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:#7A9E89;font-size:13px;">No bettors match "' + esc(search) + '"</div>';
+    return;
+  }
+
+  card.style.display = '';
+
+  // Build A-Z grouped list
+  let html = '';
+  let lastLetter = '';
+
+  filtered.forEach(b => {
+    const letter = b.name.trim()[0].toUpperCase();
+    if (letter !== lastLetter) {
+      if (lastLetter) html += '</div>';
+      html += `<div style="font-size:10px;font-weight:800;color:#8F6E2A;letter-spacing:3px;padding:10px 4px 4px;border-bottom:1px solid #2B4033;">${letter}</div><div>`;
+      lastLetter = letter;
+    }
+
     const betCount = state.bets.filter(bt => bt.bettorId === b.id).length;
     const betTotal = state.bets.filter(bt => bt.bettorId === b.id).reduce((s,bt) => s + bt.amount, 0);
-    const pill = betCount > 0
-      ? `<span class="pill" style="background:#3DB86E20;color:#3DB86E;border:1px solid #3DB86E40;">${betCount} · ${fmt(betTotal)}</span>`
-      : '';
+    const badge = betCount > 0
+      ? `<span style="background:#3DB86E18;color:#3DB86E;border:1px solid #3DB86E33;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap;">${betCount} · ${fmt(betTotal)}</span>`
+      : `<span style="background:#2B403344;color:#2B4033;border:1px solid #2B403366;border-radius:10px;padding:2px 8px;font-size:11px;">no bets</span>`;
+
     const sub = [b.phone ? '📱 ' + esc(b.phone) : '', b.email ? esc(b.email) : ''].filter(Boolean).join('  ·  ');
-    return `<div class="list-row">
+
+    html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid #1E2E23;">
       <div style="flex:1;min-width:0;">
-        <div class="row-name">${esc(b.name)}</div>
-        ${sub ? `<div class="row-sub" style="font-size:10px;">${sub}</div>` : ''}
+        <div style="font-size:14px;font-weight:700;color:#EDE8DC;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(b.name)}</div>
+        ${sub ? `<div style="font-size:10px;color:#7A9E89;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sub}</div>` : ''}
       </div>
-      <div style="display:flex;align-items:center;gap:6px;">${pill}
-        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="openBettorEdit('${b.id}')">✏️</button>
-        <button class="btn btn-danger" onclick="removeBettor('${b.id}')">✕</button>
+      <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+        ${badge}
+        <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;" onclick="openBettorEdit('${b.id}')">✏️</button>
+        <button class="btn btn-danger" style="font-size:11px;padding:4px 8px;" onclick="removeBettor('${b.id}')">✕</button>
       </div>
     </div>`;
-  }).join('');
+  });
+
+  if (lastLetter) html += '</div>';
+  list.innerHTML = html;
 }
 
 // ─── WAGERS ───────────────────────────────────────────────────────────────────
