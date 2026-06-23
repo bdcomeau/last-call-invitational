@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:8px;">
-    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.1</span>
+    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.2</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -217,29 +217,20 @@
     <div class="screen active" id="screen-events">
       <div class="section-head">📅 Events</div>
 
-      <!-- Create new event -->
-      <div class="card">
-        <div style="font-size:12px;color:#7A9E89;margin-bottom:10px;">CREATE NEW EVENT</div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <div class="field"><label>Event Name</label><input type="text" id="new-event-name" placeholder="" /></div>
-          <button class="btn btn-primary" onclick="newTournament()">+ Create Event</button>
+      <!-- ACTIVE EVENT — shown prominently at top when an event is active -->
+      <div id="active-event-card" style="display:none;">
+        <div id="active-event-hero" style="background:#1E2E23;border:2px solid #D4A843;border-radius:14px;padding:14px 16px;margin-bottom:12px;">
+          <div style="font-size:10px;color:#8F6E2A;letter-spacing:2px;font-weight:700;margin-bottom:4px;">✅ ACTIVE EVENT</div>
+          <div id="active-event-name-display" style="font-family:Barlow Condensed,sans-serif;font-size:26px;font-weight:900;color:#D4A843;line-height:1.1;margin-bottom:6px;"></div>
+          <div id="active-event-stats-display" style="font-size:12px;color:#7A9E89;"></div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+            <button class="btn btn-danger" style="font-size:12px;padding:6px 12px;" id="active-archive-btn" onclick="archiveActiveEvent()">Archive</button>
+            <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px;" id="active-duplicate-btn" onclick="duplicateActiveEvent()">⧉ Duplicate</button>
+          </div>
         </div>
-      </div>
 
-      <!-- Events list — collapsible -->
-      <div class="card" id="events-list-card" style="display:none;">
-        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:10px;" onclick="toggleEventsList()">
-          <div style="font-size:11px;color:#7A9E89;" id="events-count"></div>
-          <span id="events-list-toggle-icon" style="font-size:14px;color:#7A9E89;">▲</span>
-        </div>
-        <div id="events-list-body">
-          <div id="events-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-        </div>
-      </div>
-
-      <!-- Active event setup — shown inline when an event is active and not archived -->
-      <div id="active-event-setup" style="display:none;">
-        <div style="font-family:Barlow Condensed,sans-serif;font-size:13px;color:#D4A843;letter-spacing:2px;padding:8px 4px 6px;">⚙️ EVENT SETUP</div>
+        <!-- Event Setup — always visible below the active event hero -->
+        <div style="font-family:Barlow Condensed,sans-serif;font-size:12px;color:#8F6E2A;letter-spacing:2px;padding:4px 4px 8px;">⚙️ EVENT SETUP</div>
 
         <!-- Event name -->
         <div class="card">
@@ -303,6 +294,38 @@
           <div id="reset-success" style="display:none;text-align:center;padding:10px;font-size:13px;color:#E05252;font-weight:700;">✓ Reset complete</div>
         </div>
       </div>
+
+      <!-- NO ACTIVE EVENT — shown when nothing is active -->
+      <div id="no-active-event-msg" style="display:none;">
+        <div class="card" style="text-align:center;padding:24px;border-style:dashed;">
+          <div style="font-size:32px;margin-bottom:10px;">📅</div>
+          <div style="font-size:15px;color:#EDE8DC;font-weight:700;margin-bottom:6px;">No active event</div>
+          <div style="font-size:12px;color:#7A9E89;">Create a new event below or open an existing one.</div>
+        </div>
+      </div>
+
+      <!-- OTHER EVENTS — collapsible, below active event -->
+      <div class="card" id="events-list-card" style="display:none;margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:10px;" onclick="toggleEventsList()">
+          <div style="font-size:11px;color:#7A9E89;" id="events-count"></div>
+          <span id="events-list-toggle-icon" style="font-size:14px;color:#7A9E89;">▼</span>
+        </div>
+        <div id="events-list-body" style="display:none;">
+          <div id="events-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+      </div>
+
+      <!-- CREATE NEW EVENT — at the bottom -->
+      <div class="card" style="margin-top:8px;border-color:#2B4033;">
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:10px;letter-spacing:1px;">➕ CREATE NEW EVENT</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="field"><label>Event Name</label><input type="text" id="new-event-name" placeholder="" /></div>
+          <button class="btn btn-ghost" onclick="newTournament()">+ Create Event</button>
+        </div>
+      </div>
+
+    </div>
+      <!-- OTHER EVENTS list body is inside events-list-card above -->
     </div>
 
 
@@ -721,7 +744,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v19.1: migrate missing house take fields
+        // v19.2: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -989,6 +1012,16 @@ function viewArchivedResults(id) {
   syncStateFromRoot();
 }
 
+
+function archiveActiveEvent() {
+  const ev = activeEvent();
+  if (ev) archiveEvent(ev.id);
+}
+function duplicateActiveEvent() {
+  const ev = activeEvent();
+  if (ev) duplicateEvent(ev.id);
+}
+
 function toggleEventsList() {
   const body = document.getElementById('events-list-body');
   const icon = document.getElementById('events-list-toggle-icon');
@@ -999,14 +1032,27 @@ function toggleEventsList() {
 }
 
 function updateActiveEventSetup() {
-  const ev     = activeEvent();
-  const panel  = document.getElementById('active-event-setup');
-  if (!panel) return;
-  // Show setup panel only for active, non-archived events
+  const ev = activeEvent();
+  const activeCard = document.getElementById('active-event-card');
+  const noActiveMsg = document.getElementById('no-active-event-msg');
+  if (!activeCard) return;
+
   if (ev && !ev.archived) {
-    panel.style.display = '';
+    activeCard.style.display = '';
+    if (noActiveMsg) noActiveMsg.style.display = 'none';
+    // Update hero card
+    const nameEl  = document.getElementById('active-event-name-display');
+    const statsEl = document.getElementById('active-event-stats-display');
+    if (nameEl)  nameEl.textContent  = ev.name || 'Unnamed Event';
+    if (statsEl) {
+      const pool = (ev.bets||[]).reduce((s,b) => s + b.amount, 0);
+      statsEl.textContent = (ev.teams||[]).length + ' teams · ' +
+        (ev.bettors||[]).length + ' bettors · ' +
+        (ev.bets||[]).length + ' bets · Pool: ' + fmt(pool);
+    }
   } else {
-    panel.style.display = 'none';
+    activeCard.style.display = 'none';
+    if (noActiveMsg) noActiveMsg.style.display = root.events.length ? 'none' : '';
   }
 }
 
@@ -1014,31 +1060,43 @@ function renderEvents() {
   const card  = document.getElementById('events-list-card');
   const list  = document.getElementById('events-list');
   const count = document.getElementById('events-count');
-  if (!root.events.length) { card.style.display = 'none'; return; }
-  card.style.display = '';
-  count.textContent = root.events.length + ' event' + (root.events.length > 1 ? 's' : '');
+  const noActiveMsg = document.getElementById('no-active-event-msg');
+  if (!card || !list) return;
+
   const cur = root.activeEventId;
-  list.innerHTML = [...root.events].reverse().map(ev => {
+  const ev  = activeEvent();
+
+  // Show "no active event" message when events exist but none active/non-archived
+  if (noActiveMsg) {
+    noActiveMsg.style.display = (!ev || ev.archived) && root.events.length ? '' : 'none';
+  }
+
+  // Other events = everything except the current active non-archived event
+  const others = [...root.events].reverse().filter(e => !(e.id === cur && !e.archived));
+
+  if (!others.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  count.textContent = others.length + ' other event' + (others.length !== 1 ? 's' : '') + '  ▼';
+
+  list.innerHTML = others.map(ev => {
     const isActive   = ev.id === cur;
     const isArchived = ev.archived;
-    const date       = new Date(ev.createdAt).getFullYear();
     const betCount   = ev.bets.length;
     const pool       = ev.bets.reduce((s,b) => s + b.amount, 0);
     const hasResults = ev.placements.p1 && ev.placements.p2 && ev.placements.p3;
     return '<div style="background:' + (isActive ? '#243A2A' : '#162219') + ';border:1px solid ' +
       (isActive ? '#D4A843' : '#2B4033') + ';border-radius:10px;padding:12px 14px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
-        '<div>' +
-          '<div style="font-weight:700;font-size:15px;color:' + (isActive ? '#D4A843' : '#EDE8DC') + ';">' + esc(ev.name) + '</div>' +
-          '<div style="font-size:11px;color:#7A9E89;margin-top:2px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-weight:700;font-size:14px;color:' + (isActive ? '#D4A843' : '#EDE8DC') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(ev.name) + '</div>' +
+          '<div style="font-size:10px;color:#7A9E89;margin-top:2px;">' +
             (isArchived ? '🔒 Archived' : isActive ? '✅ Active' : '⚪ Inactive') +
             ' · ' + (ev.bettors||[]).length + ' bettors · ' + betCount + ' bets · ' + fmt(pool) +
             (hasResults ? ' · Results set' : '') +
           '</div>' +
         '</div>' +
-        '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">' +
+        '<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0;">' +
           (!isArchived && !isActive ? '<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="setActiveEvent(&quot;' + ev.id + '&quot;)">Open</button>' : '') +
-          (!isArchived && isActive  ? '<button class="btn btn-danger" style="font-size:11px;padding:5px 10px;" onclick="archiveEvent(&quot;' + ev.id + '&quot;)">Archive</button>' : '') +
           (hasResults ? '<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="viewArchivedResults(&quot;' + ev.id + '&quot;)">Results</button>' : '') +
           '<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="duplicateEvent(&quot;' + ev.id + '&quot;)">⧉ Duplicate</button>' +
           '<button class="btn btn-danger" style="font-size:11px;padding:5px 10px;" onclick="deleteEvent(&quot;' + ev.id + '&quot;)">🗑 Delete</button>' +
@@ -1047,6 +1105,7 @@ function renderEvents() {
     '</div>';
   }).join('');
 }
+
 
 // ─── SETUP ────────────────────────────────────────────────────────────────────
 // ─── Utilities (top-level so all functions can access them) ──────────────────
@@ -1457,7 +1516,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v19.1';
+const APP_VERSION = 'v19.2';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
