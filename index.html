@@ -99,10 +99,10 @@
     .list-row .row-amount { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 900; color: #D4A843; }
 
     /* Placement cards */
-    .placement-card { background: #162219; border-radius: 10px; padding: 12px 14px; border: 1px solid #2B4033; }
-    .placement-card.set-gold   { border-color: #D4A84344; }
-    .placement-card.set-silver { border-color: #C0C0C044; }
-    .placement-card.set-bronze { border-color: #CD7F3244; }
+    .placement-card { background: #162219; border-radius: 10px; padding: 12px 14px; border: 1px solid #2B4033; transition: all 0.35s ease; }
+    .placement-card.set-gold   { border-color: #D4A843; background:#1E2A10; box-shadow: 0 0 14px #D4A84328; }
+    .placement-card.set-silver { border-color: #C0C0C0; background:#1A1E28; box-shadow: 0 0 14px #C0C0C022; }
+    .placement-card.set-bronze { border-color: #CD7F32; background:#1E1810; box-shadow: 0 0 14px #CD7F3228; }
     .placement-label { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px; }
     .placement-name { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; margin-top: 8px; }
 
@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:8px;">
-    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v20.0</span>
+    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v20.1</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -616,26 +616,36 @@
 
       <!-- STEP 1: FINAL PLACEMENTS -->
       <div class="card">
-        <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:4px;">STEP 1 · FINAL PLACEMENTS</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;">STEP 1 · FINAL PLACEMENTS</div>
+          <button id="clear-placements-btn" onclick="clearPlacements()" style="display:none;background:none;border:1px solid #E0525244;color:#E05252;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">✕ Clear</button>
+        </div>
         <div style="font-size:12px;color:#7A9E89;margin-bottom:12px;line-height:1.5;">
           Select the finishing order. Payouts calculate automatically once all three are set.
         </div>
         <div style="display:flex;flex-direction:column;gap:10px;">
+
+          <!-- 1st place -->
           <div class="placement-card" id="pc-p1">
             <div class="placement-label" style="color:#D4A843;">🥇 1st Place — WINS</div>
-            <div class="field"><select id="place-p1" onchange="setPlacement('p1', this.value)"><option value="">— Select Team —</option></select></div>
+            <div class="field" id="pc-p1-select"><select id="place-p1" onchange="setPlacement('p1', this.value)"><option value="">— Select Team —</option></select></div>
             <div class="placement-name" id="pname-p1" style="color:#D4A843;display:none;"></div>
           </div>
+
+          <!-- 2nd place -->
           <div class="placement-card" id="pc-p2">
             <div class="placement-label" style="color:#C0C0C0;">🥈 2nd Place — PLACE &amp; SHOW</div>
-            <div class="field"><select id="place-p2" onchange="setPlacement('p2', this.value)"><option value="">— Select Team —</option></select></div>
+            <div class="field" id="pc-p2-select"><select id="place-p2" onchange="setPlacement('p2', this.value)"><option value="">— Select Team —</option></select></div>
             <div class="placement-name" id="pname-p2" style="color:#C0C0C0;display:none;"></div>
           </div>
+
+          <!-- 3rd place -->
           <div class="placement-card" id="pc-p3">
             <div class="placement-label" style="color:#CD7F32;">🥉 3rd Place — SHOW only</div>
-            <div class="field"><select id="place-p3" onchange="setPlacement('p3', this.value)"><option value="">— Select Team —</option></select></div>
+            <div class="field" id="pc-p3-select"><select id="place-p3" onchange="setPlacement('p3', this.value)"><option value="">— Select Team —</option></select></div>
             <div class="placement-name" id="pname-p3" style="color:#CD7F32;display:none;"></div>
           </div>
+
         </div>
       </div>
 
@@ -656,7 +666,7 @@
       <!-- Steps 2-5 — only shown when all placements set -->
       <div id="results-content" style="display:none;flex-direction:column;gap:12px;">
 
-        <!-- STEP 2: HOUSE TAKE — prominent, right after confirmation -->
+        <!-- STEP 2: HOUSE TAKE with presets -->
         <div class="card" style="border-color:#D4A84333;">
           <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">STEP 2 · HOUSE TAKE</div>
           <div style="display:flex;gap:6px;margin-bottom:12px;">
@@ -666,7 +676,14 @@
               style="flex:1;padding:8px;border-radius:8px;border:1px solid #2B4033;background:transparent;color:#7A9E89;font-size:12px;font-weight:700;cursor:pointer;">Flat $</button>
           </div>
           <div id="take-pct-row">
-            <div style="font-size:11px;color:#7A9E89;margin-bottom:6px;">% of total pool retained before payout</div>
+            <!-- Quick presets -->
+            <div style="display:flex;gap:5px;margin-bottom:10px;">
+              <button onclick="setHousePct(0)"  id="preset-0"  style="flex:1;padding:6px 4px;border-radius:7px;border:1px solid #2B4033;background:transparent;color:#7A9E89;font-size:12px;font-weight:700;cursor:pointer;">0%</button>
+              <button onclick="setHousePct(3)"  id="preset-3"  style="flex:1;padding:6px 4px;border-radius:7px;border:1px solid #2B4033;background:transparent;color:#7A9E89;font-size:12px;font-weight:700;cursor:pointer;">3%</button>
+              <button onclick="setHousePct(5)"  id="preset-5"  style="flex:1;padding:6px 4px;border-radius:7px;border:1px solid #2B4033;background:transparent;color:#7A9E89;font-size:12px;font-weight:700;cursor:pointer;">5%</button>
+              <button onclick="setHousePct(10)" id="preset-10" style="flex:1;padding:6px 4px;border-radius:7px;border:1px solid #2B4033;background:transparent;color:#7A9E89;font-size:12px;font-weight:700;cursor:pointer;">10%</button>
+            </div>
+            <div style="font-size:11px;color:#7A9E89;margin-bottom:6px;">or drag to set exact %</div>
             <div style="display:flex;align-items:center;gap:14px;">
               <input type="range" id="handle-slider" min="0" max="10" step="0.5" value="0"
                 oninput="onSliderInput(this)" style="flex:1;accent-color:#D4A843;" />
@@ -682,11 +699,10 @@
                 oninput="onFlatInput(this)" />
             </div>
           </div>
-          <!-- Live house take summary -->
           <div id="house-take-summary" style="margin-top:10px;padding:8px 12px;background:#0E1A12;border-radius:8px;font-size:12px;color:#7A9E89;"></div>
         </div>
 
-        <!-- STEP 3: FINAL STANDINGS + POOL SUMMARY -->
+        <!-- STEP 3: POOL SUMMARY -->
         <div class="card">
           <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;margin-bottom:10px;">STEP 3 · POOL SUMMARY</div>
           <div id="results-podium" style="margin-bottom:12px;"></div>
@@ -694,15 +710,14 @@
           <div style="text-align:right;margin-top:8px;font-size:12px;font-weight:700;" id="balance-msg"></div>
         </div>
 
-        <!-- STEP 4: WINNER PAYOUTS — hero section -->
+        <!-- STEP 4: WINNER PAYOUTS -->
         <div class="card" style="border-color:#D4A84344;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <div style="font-family:Barlow Condensed;font-size:11px;color:#8F6E2A;letter-spacing:2px;">STEP 4 · WINNER PAYOUTS</div>
             <button class="btn btn-ghost btn-sm" onclick="printFullReport()" style="font-size:11px;">🖨 Full Report</button>
           </div>
-          <!-- Winners leaderboard -->
           <div id="winners-leaderboard" style="margin-bottom:12px;"></div>
-          <button class="btn btn-primary" onclick="prepareCashLabels()" style="width:100%;font-size:16px;padding:14px;">🏆 Prepare Winner Summaries</button>
+          <button class="btn btn-primary" id="prepare-print-btn" onclick="prepareCashLabels()" style="width:100%;font-size:16px;padding:14px;">🏆 Prepare &amp; Print Winner Summaries</button>
           <button id="label-print-btn" class="btn btn-primary" style="display:none;width:100%;margin-top:8px;font-size:15px;padding:14px;">🖨 Open &amp; Print Winner Summaries</button>
           <div id="winners-preview" style="display:none;margin-top:16px;"></div>
         </div>
@@ -714,7 +729,6 @@
             <span id="recon-toggle-icon" style="color:#7A9E89;font-size:13px;">▼</span>
           </div>
           <div id="recon-body" style="display:none;">
-            <!-- Filter toggle -->
             <div style="display:flex;gap:6px;margin-bottom:10px;">
               <button id="recon-filter-all" onclick="setReconFilter('all')"
                 style="flex:1;padding:6px;border-radius:8px;border:1px solid #2B4033;background:transparent;color:#7A9E89;font-size:11px;font-weight:700;cursor:pointer;">All Bettors</button>
@@ -736,7 +750,6 @@
 
       </div>
 
-    </div>
     </div>
     </div><!-- end screen-results -->
 
@@ -863,7 +876,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v20.0: migrate missing house take fields
+        // v20.1: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1478,6 +1491,25 @@ function prepareCashLabels() {
     pages + '</body></html>';
 
   const btn = document.getElementById('label-print-btn');
+  const preparePrintBtn = document.getElementById('prepare-print-btn');
+
+  // Build the open function
+  const openFn = function() {
+    const blob = new Blob([injectPrintButton(html, '🖨 Print / Share Winner Summaries')], { type: 'text/html' });
+    const url  = URL.createObjectURL(blob);
+    const win  = window.open(url, '_blank');
+    if (!win) {
+      const tab = window.open('about:blank', '_blank');
+      if (tab) { tab.document.open(); tab.document.write(html); tab.document.close(); }
+      else { alert('Please allow popups for this site, then try again.'); }
+    }
+    setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+  };
+
+  // Auto-open immediately
+  openFn();
+
+  // Also wire up the fallback "Open & Print" button in case popup was blocked
   if (btn) {
     btn.style.display = '';
     const modeLabel = (_handleMode === 'flat')
@@ -1486,18 +1518,11 @@ function prepareCashLabels() {
     const ts = new Date().toLocaleTimeString('en-CA', { timeStyle: 'short' });
     btn.innerHTML = '🖨 Open &amp; Print ' + winners.length + ' Winner Summary Sheet' + (winners.length>1?'s':'') +
       '<div style="font-size:10px;font-weight:400;opacity:0.8;margin-top:2px;">' + modeLabel + ' · Calculated ' + ts + '</div>';
-    btn.onclick = function() {
-      const blob = new Blob([injectPrintButton(html, '🖨 Print / Share Winner Summaries')], { type: 'text/html' });
-      const url  = URL.createObjectURL(blob);
-      const win  = window.open(url, '_blank');
-      if (!win) {
-        const tab = window.open('about:blank', '_blank');
-        if (tab) { tab.document.open(); tab.document.write(html); tab.document.close(); }
-        else { alert('Please allow popups for this site, then try again.'); }
-      }
-      setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
-    };
+    btn.onclick = openFn;
   }
+
+  // Hide the prepare button so it doesn't show twice
+  if (preparePrintBtn) preparePrintBtn.style.display = 'none';
 
   // ── Winners preview list ────────────────────────────────────────────────────
   const preview = document.getElementById('winners-preview');
@@ -1632,7 +1657,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v20.0';
+const APP_VERSION = 'v20.1';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -1710,6 +1735,7 @@ function onSliderInput(el) {
   state.handlePct = parseFloat(el.value) || 0;
   const hd = document.getElementById('handle-display');
   if (hd) hd.textContent = state.handlePct + '%';
+  _syncPresetButtons();
   renderResults();
 }
 
@@ -3614,6 +3640,44 @@ function printBettingSheet() {
 }
 
 // ─── PLACEMENTS ───────────────────────────────────────────────────────────────
+function clearPlacements() {
+  state.placements = { p1:'', p2:'', p3:'' };
+  const ev = activeEvent();
+  if (ev) ev.placements = state.placements;
+  save(); renderPlacements(); renderResults(); updateHeader();
+}
+
+function setHousePct(pct) {
+  state.handleMode = 'pct';
+  state.handlePct  = pct;
+  const slider = document.getElementById('handle-slider');
+  const disp   = document.getElementById('handle-display');
+  if (slider) slider.value = pct;
+  if (disp)   disp.textContent = pct + '%';
+  // Update preset button highlights
+  [0,3,5,10].forEach(function(p) {
+    const btn = document.getElementById('preset-' + p);
+    if (!btn) return;
+    const active = p === pct;
+    btn.style.background   = active ? '#D4A843' : 'transparent';
+    btn.style.color        = active ? '#111' : '#7A9E89';
+    btn.style.borderColor  = active ? '#D4A843' : '#2B4033';
+  });
+  renderResults();
+}
+
+function _syncPresetButtons() {
+  const pct = state.handlePct || 0;
+  [0,3,5,10].forEach(function(p) {
+    const btn = document.getElementById('preset-' + p);
+    if (!btn) return;
+    const active = p === pct && (state.handleMode || 'pct') === 'pct';
+    btn.style.background   = active ? '#D4A843' : 'transparent';
+    btn.style.color        = active ? '#111' : '#7A9E89';
+    btn.style.borderColor  = active ? '#D4A843' : '#2B4033';
+  });
+}
+
 function renderPlacements() {
   const noTeams = document.getElementById('no-teams-msg');
   if (!state.teams.length) { if (noTeams) noTeams.style.display = ''; return; }
@@ -3630,19 +3694,34 @@ function renderPlacements() {
         .map(t => `<option value="${t.id}"${t.id===cur?' selected':''}>${esc(t.name)}</option>`)
         .join('');
     const nameEl = document.getElementById('pname-' + pos);
-    const card = document.getElementById('pc-' + pos);
+    const card   = document.getElementById('pc-' + pos);
+    const selDiv = document.getElementById('pc-' + pos + '-select');
     if (cur) {
-      nameEl.textContent = teamById(cur)?.name || '';
+      const teamN = teamById(cur)?.name || '';
+      // Show large animated name, hide the raw dropdown
+      nameEl.textContent  = teamN;
       nameEl.style.display = '';
+      nameEl.style.fontFamily = 'Barlow Condensed, sans-serif';
+      nameEl.style.fontSize   = '22px';
+      nameEl.style.fontWeight = '900';
+      if (selDiv) selDiv.style.display = 'none';
       card.className = 'placement-card set-' + (pos==='p1'?'gold':pos==='p2'?'silver':'bronze');
     } else {
       nameEl.style.display = 'none';
+      if (selDiv) selDiv.style.display = '';
       card.className = 'placement-card';
     }
   });
 
   const confirmed = state.placements.p1 && state.placements.p2 && state.placements.p3;
   document.getElementById('confirmed-banner').style.display = confirmed ? '' : 'none';
+
+  // Show clear button if any placement is set
+  const anySet = state.placements.p1 || state.placements.p2 || state.placements.p3;
+  const clearBtn = document.getElementById('clear-placements-btn');
+  if (clearBtn) clearBtn.style.display = anySet ? '' : 'none';
+
+  _syncPresetButtons();
 }
 
 function setPlacement(pos, val) {
@@ -3825,6 +3904,8 @@ function renderResults() {
   // Always reset the print buttons when rendering results for any event
   const labelBtn = document.getElementById('label-print-btn');
   if (labelBtn) { labelBtn.style.display = 'none'; labelBtn.onclick = null; }
+  const preparePrintBtn = document.getElementById('prepare-print-btn');
+  if (preparePrintBtn) preparePrintBtn.style.display = '';
   const preview = document.getElementById('winners-preview');
   if (preview) { preview.style.display = 'none'; preview.innerHTML = ''; }
 
@@ -3912,11 +3993,19 @@ function renderResults() {
         const netG   = Math.round((s.payout - s.wagered)*100)/100;
         const barPct = maxPayout > 0 ? (s.payout / maxPayout * 100).toFixed(0) : 0;
         const rankMedal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'<span style="color:#7A9E89;font-size:11px;min-width:20px;text-align:center;">#'+(i+1)+'</span>';
+        // Build "what they bet" line — winning bets only
+        const winningBets = s.bets.filter(b => b.payout > 0);
+        const betDesc = winningBets.map(b => {
+          const tName = teamName(b.teamId);
+          const typeU = (b.type||'').toUpperCase();
+          return typeU + ' on ' + tName;
+        }).join(' · ');
         return '<div style="padding:10px 0;border-bottom:1px solid #1E2E23;">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
             '<span style="font-size:18px;min-width:24px;">' + rankMedal + '</span>' +
             '<div style="flex:1;min-width:0;">' +
               '<div style="font-size:15px;font-weight:800;color:#EDE8DC;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(name) + '</div>' +
+              (betDesc ? '<div style="font-size:11px;color:#3DB86E;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(betDesc) + '</div>' : '') +
               '<div style="font-size:11px;color:#7A9E89;">wagered ' + fmt(s.wagered) + '</div>' +
             '</div>' +
             '<div style="text-align:right;">' +
@@ -3939,6 +4028,13 @@ function renderResults() {
   renderResults._totalPayout    = totalPayout;
   renderResults._houseRetained  = houseRetained;
   renderResults._balanced       = balanced;
+
+  // Update recon header with counts
+  const winnerCount = sortedBettors.filter(e => e[1].payout > 0).length;
+  const totalCount  = sortedBettors.length;
+  const reconLbl = document.getElementById('recon-header-label');
+  if (reconLbl) reconLbl.textContent = 'STEP 5 · ' + winnerCount + ' WINNERS of ' + totalCount + ' BETTORS';
+
   _renderReconList();
 }
 
