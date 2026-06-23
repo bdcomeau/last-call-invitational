@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:8px;">
-    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.5</span>
+    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.6</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -801,7 +801,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v19.5: migrate missing house take fields
+        // v19.6: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1144,22 +1144,18 @@ function renderEvents() {
     const hasResults = ev.placements.p1 && ev.placements.p2 && ev.placements.p3;
     return '<div style="background:' + (isActive ? '#243A2A' : '#162219') + ';border:1px solid ' +
       (isActive ? '#D4A843' : '#2B4033') + ';border-radius:10px;padding:12px 14px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
-        '<div style="flex:1;min-width:0;">' +
-          '<div style="font-weight:700;font-size:14px;color:' + (isActive ? '#D4A843' : '#EDE8DC') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(ev.name) + '</div>' +
-          '<div style="font-size:10px;color:#7A9E89;margin-top:2px;">' +
-            (isArchived ? '🔒 Archived' : isActive ? '✅ Active' : '⚪ Inactive') +
-            ' · ' + (ev.bettors||[]).length + ' bettors · ' + betCount + ' bets · ' + fmt(pool) +
-            (hasResults ? ' · Results set' : '') +
-          '</div>' +
+        '<div style="font-weight:700;font-size:15px;color:' + (isActive ? '#D4A843' : '#EDE8DC') + ';margin-bottom:3px;">' + esc(ev.name) + '</div>' +
+        '<div style="font-size:10px;color:#7A9E89;margin-bottom:10px;">' +
+          (isArchived ? '🔒 Archived' : isActive ? '✅ Active' : '⚪ Inactive') +
+          ' · ' + (ev.bettors||[]).length + ' bettors · ' + betCount + ' bets · ' + fmt(pool) +
+          (hasResults ? ' · Results set' : '') +
         '</div>' +
-        '<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0;">' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
           (!isArchived && !isActive ? '<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="setActiveEvent(&quot;' + ev.id + '&quot;)">Open</button>' : '') +
           (hasResults ? '<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="viewArchivedResults(&quot;' + ev.id + '&quot;)">Results</button>' : '') +
           '<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" onclick="duplicateEvent(&quot;' + ev.id + '&quot;)">⧉ Duplicate</button>' +
           '<button class="btn btn-danger" style="font-size:11px;padding:5px 10px;" onclick="deleteEvent(&quot;' + ev.id + '&quot;)">🗑 Delete</button>' +
         '</div>' +
-      '</div>' +
     '</div>';
   }).join('');
 }
@@ -1574,7 +1570,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v19.5';
+const APP_VERSION = 'v19.6';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
