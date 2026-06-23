@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:8px;">
-    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v20.2</span>
+    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v20.3</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -876,7 +876,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v20.2: migrate missing house take fields
+        // v20.3: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1657,7 +1657,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v20.2';
+const APP_VERSION = 'v20.3';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -4046,6 +4046,10 @@ function toggleRecon() {
   const open = body.style.display === 'none';
   body.style.display = open ? '' : 'none';
   if (icon) icon.textContent = open ? '▲' : '▼';
+  // If opening and data isn't ready yet, trigger a full render
+  if (open && !renderResults._sortedBettors) renderResults();
+  // If opening and data is ready, just re-render the list
+  else if (open) _renderReconList();
 }
 function setReconFilter(f) {
   _reconFilter = f;
@@ -4061,7 +4065,9 @@ function setReconFilter(f) {
 }
 function _renderReconList() {
   const list = document.getElementById('recon-list');
-  if (!list || !renderResults._sortedBettors) return;
+  if (!list) return;
+  // If data isn't ready, trigger a full renderResults which will call us at the end
+  if (!renderResults._sortedBettors) { renderResults(); return; }
   const sortedBettors = renderResults._sortedBettors;
 
   const filtered = sortedBettors.filter(function(e) {
