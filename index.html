@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:8px;">
-    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.4</span>
+    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.5</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -407,89 +407,118 @@
     <div class="screen" id="screen-entry">
       <div class="section-head">📋 Place Bets</div>
 
-      <!-- 1. Bettor selector -->
-      <div class="card">
-        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">BETTOR</div>
-        <div style="display:flex;gap:8px;">
-          <select id="entry-bettor" style="flex:1;background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;" onchange="loadEntrySheet()">
-            <option value="">— Select Bettor —</option>
-          </select>
-        </div>
-        <div style="font-size:10px;color:#7A9E89;margin-top:6px;">Select a bettor to load their entry grid</div>
-      </div>
-
-      <!-- 2. Submitted tickets — shown directly below bettor -->
-      <div class="card" id="entry-tickets-card" style="display:none;">
-        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">SUBMITTED TICKETS</div>
-        <div id="entry-tickets-list"></div>
-      </div>
-
-      <!-- 3. Enter New Bet grid -->
-      <div class="card" id="entry-grid-card" style="display:none;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <!-- 1. BETTOR SELECTOR — hero element -->
+      <div style="background:#1E2E23;border:2px solid #D4A84366;border-radius:14px;padding:14px 16px;margin-bottom:10px;">
+        <div style="font-size:10px;color:#8F6E2A;letter-spacing:2px;font-weight:700;margin-bottom:8px;">SELECT BETTOR</div>
+        <select id="entry-bettor"
+          style="width:100%;background:#0E1A12;border:1px solid #D4A84366;border-radius:10px;color:#EDE8DC;padding:12px 14px;font-size:17px;font-weight:700;outline:none;appearance:none;-webkit-appearance:none;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23D4A843%22><path d=%22M7 10l5 5 5-5z%22/></svg>');background-repeat:no-repeat;background-position:right 12px center;background-size:20px;"
+          onchange="loadEntrySheet()">
+          <option value="">— Select Bettor —</option>
+        </select>
+        <!-- Next ticket number — visible immediately after selecting bettor -->
+        <div id="entry-ticket-ref-hero" style="display:none;margin-top:10px;background:#0E1A12;border-radius:8px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <div>
-            <div style="font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:700;color:#D4A843;letter-spacing:1px;">ENTER NEW BET</div>
-            <div style="font-size:12px;font-weight:700;" id="entry-bettor-name"></div>
-            <div style="font-size:10px;color:#7A9E89;" id="entry-ticket-ref"></div>
+            <div style="font-size:9px;color:#8F6E2A;letter-spacing:2px;font-weight:700;">NEXT TICKET #</div>
+            <div style="font-family:Barlow Condensed,sans-serif;font-size:22px;font-weight:900;color:#D4A843;letter-spacing:2px;" id="entry-ticket-ref"></div>
           </div>
-          <button class="btn btn-primary" onclick="submitEntrySheet()" style="font-size:13px;padding:8px 14px;">✓ Submit Bets</button>
+          <div style="font-size:10px;color:#E05252;font-weight:700;text-align:right;line-height:1.4;">✍️ Pre-write this on<br>the paper sheet</div>
         </div>
-
-        <!-- Column headers -->
-        <div style="display:grid;grid-template-columns:1fr 80px 80px 80px;gap:4px;margin-bottom:6px;padding:0 4px;">
-          <div style="font-size:10px;color:#7A9E89;letter-spacing:1px;">TEAM</div>
-          <div style="font-size:10px;color:#3DB86E;letter-spacing:1px;text-align:center;">WIN</div>
-          <div style="font-size:10px;color:#5AAEDD;letter-spacing:1px;text-align:center;">PLACE</div>
-          <div style="font-size:10px;color:#B07FDE;letter-spacing:1px;text-align:center;">SHOW</div>
-        </div>
-
-        <div id="entry-rows" style="display:flex;flex-direction:column;gap:4px;"></div>
-
-        <!-- Totals row -->
-        <div style="display:grid;grid-template-columns:1fr 80px 80px 80px;gap:4px;margin-top:8px;padding:8px 4px;border-top:1px solid #2B4033;">
-          <div style="font-size:11px;font-weight:700;color:#D4A843;">TOTAL</div>
-          <div style="font-size:12px;font-weight:700;color:#3DB86E;text-align:center;" id="entry-total-win">$0</div>
-          <div style="font-size:12px;font-weight:700;color:#5AAEDD;text-align:center;" id="entry-total-place">$0</div>
-          <div style="font-size:12px;font-weight:700;color:#B07FDE;text-align:center;" id="entry-total-show">$0</div>
-        </div>
-        <div style="text-align:right;font-size:13px;font-weight:700;color:#D4A843;padding:4px;" id="entry-grand-total">Grand Total: $0.00</div>
       </div>
 
-      <!-- 4. Print Sheets — always at bottom -->
-      <div class="card">
-        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">🖨 BETTING SHEETS</div>
-        <div style="font-size:12px;color:#EDE8DC;margin-bottom:10px;line-height:1.6;">
-          Print blank sheets to hand out. Bettors fill in their name and amounts, return with cash.
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <div class="field" style="flex:1;">
-            <label>Copies</label>
-            <select id="sheet-copies" style="background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;width:100%;">
-              <option value="1">1 copy</option>
-              <option value="2">2 copies</option>
-              <option value="5" selected>5 copies</option>
-              <option value="10">10 copies</option>
-              <option value="20">20 copies</option>
-            </select>
+      <!-- 2. ENTER NEW BET GRID -->
+      <div id="entry-grid-card" style="display:none;">
+        <div class="card" style="padding-bottom:0;">
+          <!-- Column headers -->
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 80px;gap:4px;margin-bottom:6px;padding:0 4px;">
+            <div style="font-size:10px;color:#7A9E89;letter-spacing:1px;">TEAM</div>
+            <div style="font-size:10px;color:#3DB86E;letter-spacing:1px;text-align:center;">WIN</div>
+            <div style="font-size:10px;color:#5AAEDD;letter-spacing:1px;text-align:center;">PLACE</div>
+            <div style="font-size:10px;color:#B07FDE;letter-spacing:1px;text-align:center;">SHOW</div>
           </div>
-          <button class="btn btn-primary" onclick="printBettingSheet()" style="white-space:nowrap;margin-top:18px;">🖨 Prepare Sheets</button>
+          <div id="entry-rows" style="display:flex;flex-direction:column;gap:4px;"></div>
+          <!-- Totals row -->
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 80px;gap:4px;margin-top:8px;padding:8px 4px 10px;border-top:1px solid #2B4033;">
+            <div style="font-size:11px;font-weight:700;color:#D4A843;">TOTAL</div>
+            <div style="font-size:12px;font-weight:700;color:#3DB86E;text-align:center;" id="entry-total-win">$0</div>
+            <div style="font-size:12px;font-weight:700;color:#5AAEDD;text-align:center;" id="entry-total-place">$0</div>
+            <div style="font-size:12px;font-weight:700;color:#B07FDE;text-align:center;" id="entry-total-show">$0</div>
+          </div>
         </div>
-        <button id="sheet-print-btn" class="btn btn-primary" style="display:none;width:100%;margin-top:10px;font-size:15px;padding:14px;">🖨 Print Betting Sheets</button>
+
+        <!-- Grand total + submit — sticky at bottom -->
+        <div id="entry-submit-bar" style="position:sticky;bottom:calc(env(safe-area-inset-bottom,0px) + 56px);z-index:8;background:#0E1A12;border-top:1px solid #2B4033;padding:10px 0 6px;display:none;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="flex:1;">
+              <div style="font-size:10px;color:#7A9E89;letter-spacing:1px;">GRAND TOTAL</div>
+              <div style="font-size:22px;font-weight:900;color:#D4A843;" id="entry-grand-total">$0.00</div>
+            </div>
+            <button class="btn btn-primary" onclick="submitEntrySheet()" style="font-size:15px;padding:12px 24px;white-space:nowrap;">✓ Submit Bets</button>
+          </div>
+        </div>
+        <!-- Zero state spacer when bar is hidden -->
+        <div style="text-align:right;font-size:13px;font-weight:700;color:#2B4033;padding:4px;" id="entry-grand-total-static">Grand Total: $0.00</div>
       </div>
 
-      <!-- 5. Import Bets from CSV — always at bottom -->
-      <div class="card">
-        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">📥 IMPORT BETS FROM CSV</div>
-        <div style="font-size:12px;color:#EDE8DC;margin-bottom:4px;line-height:1.6;">
-          Bulk-load bets from a spreadsheet exported as CSV.
+      <!-- 3. SUBMITTED TICKETS — collapsible, below grid -->
+      <div id="entry-tickets-section" style="display:none;margin-top:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:10px 4px 6px;" onclick="toggleEntryTickets()">
+          <div style="font-size:11px;color:#7A9E89;letter-spacing:1px;" id="entry-tickets-label">📋 SUBMITTED TICKETS</div>
+          <span id="entry-tickets-icon" style="color:#7A9E89;font-size:13px;">▼</span>
         </div>
-        <div style="font-size:10px;color:#7A9E89;margin-bottom:10px;line-height:1.6;">
-          4 columns: <strong style="color:#EDE8DC;">Bettor Name · Team Name · Type (W P S WP WPS) · Amount</strong><br/>
-          Optional 5th column: <strong style="color:#EDE8DC;">Ticket # (e.g. LCI-2025-0001)</strong>
+        <div id="entry-tickets-body" style="display:none;">
+          <div class="card" style="padding:8px 12px;">
+            <div id="entry-tickets-list"></div>
+          </div>
         </div>
-        <input type="file" id="import-bets-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBets(this)" />
-        <div id="import-bets-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;margin-top:6px;"></div>
       </div>
+
+      <!-- 4. TOOLS — collapsible at bottom -->
+      <div style="margin-top:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:8px 4px;" onclick="toggleEntryTools()">
+          <div style="font-size:11px;color:#7A9E89;letter-spacing:1px;">🛠 TOOLS</div>
+          <span id="entry-tools-icon" style="color:#7A9E89;font-size:13px;">▼</span>
+        </div>
+        <div id="entry-tools-body" style="display:none;">
+
+          <!-- Betting Sheets -->
+          <div class="card">
+            <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">🖨 BETTING SHEETS</div>
+            <div style="font-size:12px;color:#EDE8DC;margin-bottom:10px;line-height:1.6;">
+              Print blank sheets to hand out. Bettors fill in their name and amounts, return with cash.
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <div class="field" style="flex:1;">
+                <label>Copies</label>
+                <select id="sheet-copies" style="background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;width:100%;">
+                  <option value="1">1 copy</option>
+                  <option value="2">2 copies</option>
+                  <option value="5" selected>5 copies</option>
+                  <option value="10">10 copies</option>
+                  <option value="20">20 copies</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="printBettingSheet()" style="white-space:nowrap;margin-top:18px;">🖨 Prepare Sheets</button>
+            </div>
+            <button id="sheet-print-btn" class="btn btn-primary" style="display:none;width:100%;margin-top:10px;font-size:15px;padding:14px;">🖨 Print Betting Sheets</button>
+          </div>
+
+          <!-- Import Bets from CSV -->
+          <div class="card">
+            <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">📥 IMPORT BETS FROM CSV</div>
+            <div style="font-size:12px;color:#EDE8DC;margin-bottom:4px;line-height:1.6;">
+              Bulk-load bets from a spreadsheet exported as CSV.
+            </div>
+            <div style="font-size:10px;color:#7A9E89;margin-bottom:10px;line-height:1.6;">
+              4 columns: <strong style="color:#EDE8DC;">Bettor Name · Team Name · Type (W P S WP WPS) · Amount</strong><br/>
+              Optional 5th column: <strong style="color:#EDE8DC;">Ticket # (e.g. LCI-2025-0001)</strong>
+            </div>
+            <input type="file" id="import-bets-file" accept=".csv,.txt,.tsv" style="width:100%;color:#D4A843;font-size:13px;padding:8px 0;" onchange="importBets(this)" />
+            <div id="import-bets-msg" style="display:none;font-size:12px;text-align:center;padding:6px;border-radius:6px;margin-top:6px;"></div>
+          </div>
+
+        </div>
+      </div>
+
     </div>
 
     <!-- WAGERS -->
@@ -772,7 +801,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v19.4: migrate missing house take fields
+        // v19.5: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1545,7 +1574,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v19.4';
+const APP_VERSION = 'v19.5';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -2935,6 +2964,24 @@ function genTicketRef() {
   return ref;
 }
 
+function toggleEntryTickets() {
+  const body = document.getElementById('entry-tickets-body');
+  const icon = document.getElementById('entry-tickets-icon');
+  if (!body) return;
+  const open = body.style.display === 'none';
+  body.style.display = open ? '' : 'none';
+  if (icon) icon.textContent = open ? '▲' : '▼';
+}
+
+function toggleEntryTools() {
+  const body = document.getElementById('entry-tools-body');
+  const icon = document.getElementById('entry-tools-icon');
+  if (!body) return;
+  const open = body.style.display === 'none';
+  body.style.display = open ? '' : 'none';
+  if (icon) icon.textContent = open ? '▲' : '▼';
+}
+
 function loadEntryTab() {
   // Populate bettor dropdown
   const sel = document.getElementById('entry-bettor');
@@ -2950,11 +2997,13 @@ function loadEntrySheet() {
   const sel      = document.getElementById('entry-bettor');
   const bettorId = sel ? sel.value : '';
   const gridCard = document.getElementById('entry-grid-card');
-  const tickCard = document.getElementById('entry-tickets-card');
+  const tickSection = document.getElementById('entry-tickets-section');
+  const tickHero = document.getElementById('entry-ticket-ref-hero');
 
   if (!bettorId) {
-    if (gridCard) gridCard.style.display = 'none';
-    if (tickCard) tickCard.style.display = 'none';
+    if (gridCard)    gridCard.style.display    = 'none';
+    if (tickSection) tickSection.style.display = 'none';
+    if (tickHero)    tickHero.style.display    = 'none';
     return;
   }
 
@@ -2963,15 +3012,15 @@ function loadEntrySheet() {
 
   // Show grid
   if (gridCard) gridCard.style.display = '';
-  const nameEl = document.getElementById('entry-bettor-name');
-  const refEl  = document.getElementById('entry-ticket-ref');
-  if (nameEl) nameEl.textContent = bettor ? bettor.name : '';
 
-  // Show pending ticket ref (will be assigned on submit)
+  // Show ticket ref in hero panel
+  const refEl  = document.getElementById('entry-ticket-ref');
   const ev = activeEvent();
   const nextNum = ev ? (ev.nextTicketNum || 1) : 1;
   const _year1 = new Date(ev ? (ev.createdAt || Date.now()) : Date.now()).getFullYear();
-  if (refEl) refEl.textContent = 'Next ticket #: LCI-' + _year1 + '-' + String(nextNum).padStart(4,'0');
+  const ticketStr = 'LCI-' + _year1 + '-' + String(nextNum).padStart(4,'0');
+  if (refEl) refEl.textContent = ticketStr;
+  if (tickHero) tickHero.style.display = '';
 
   // Build entry rows
   const rows = document.getElementById('entry-rows');
@@ -3065,10 +3114,15 @@ function updateEntryTotals() {
   const tp = document.getElementById('entry-total-place');
   const ts = document.getElementById('entry-total-show');
   const tg = document.getElementById('entry-grand-total');
+  const tgs = document.getElementById('entry-grand-total-static');
+  const bar = document.getElementById('entry-submit-bar');
   if (tw) tw.textContent = fmt(winTotal);
   if (tp) tp.textContent = fmt(placeTotal);
   if (ts) ts.textContent = fmt(showTotal);
-  if (tg) tg.textContent = 'Grand Total: ' + fmt(grand);
+  if (tg) tg.textContent = fmt(grand);
+  if (tgs) tgs.textContent = 'Grand Total: ' + fmt(grand);
+  // Show sticky submit bar only when there are bets entered
+  if (bar) bar.style.display = grand > 0 ? '' : 'none';
 }
 
 function submitEntrySheet() {
@@ -3194,12 +3248,12 @@ function confirmCash() {
   updateEntryTotals();
   renderEntryTickets(bettorId);
 
-  // Update ticket ref preview
+  // Update ticket ref preview for next ticket
   const ev2 = activeEvent();
   const nextNum2 = ev2 ? (ev2.nextTicketNum || 1) : 1;
   const refEl = document.getElementById('entry-ticket-ref');
   const _year2 = new Date(ev2 ? (ev2.createdAt || Date.now()) : Date.now()).getFullYear();
-  if (refEl) refEl.textContent = 'Next ticket #: LCI-' + _year2 + '-' + String(nextNum2).padStart(4,'0');
+  if (refEl) refEl.textContent = 'LCI-' + _year2 + '-' + String(nextNum2).padStart(4,'0');
 
   // Show ticket number prominently so operator can write it on the paper sheet
   showTicketConfirmation(ticketRef, bettor, grand, bettorId);
@@ -3254,14 +3308,19 @@ function printTicketFromConfirm(bettorId) {
 }
 
 function renderEntryTickets(bettorId) {
-  const card = document.getElementById('entry-tickets-card');
-  const list = document.getElementById('entry-tickets-list');
-  if (!card || !list) return;
+  const section = document.getElementById('entry-tickets-section');
+  const list    = document.getElementById('entry-tickets-list');
+  const label   = document.getElementById('entry-tickets-label');
+  if (!section || !list) return;
 
   const bettorBets = (state.bets||[]).filter(b => b.bettorId === bettorId && b.ticketRef);
-  if (!bettorBets.length) { card.style.display = 'none'; return; }
+  if (!bettorBets.length) { section.style.display = 'none'; return; }
 
-  card.style.display = '';
+  // Count tickets
+  const ticketRefs = [...new Set(bettorBets.map(b => b.ticketRef))];
+  section.style.display = '';
+  if (label) label.textContent = '📋 SUBMITTED TICKETS (' + ticketRefs.length + ')';
+
   const ticketGroups = {};
   bettorBets.forEach(b => {
     if (!ticketGroups[b.ticketRef]) ticketGroups[b.ticketRef] = [];
