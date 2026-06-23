@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:8px;">
-    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.6</span>
+    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.7</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -524,16 +524,8 @@
     <!-- WAGERS -->
     <div class="screen" id="screen-wagers">
       <div class="section-head">🎰 Wager Management</div>
-      <div class="card" style="margin-bottom:4px;">
-        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;letter-spacing:1px;">🎟 BETTOR TICKET / RECEIPT</div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <select id="ticket-bettor" style="flex:1;background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;">
-            <option value="">— Select Bettor —</option>
-          </select>
-          <button class="btn btn-ghost" onclick="printTicket()" style="white-space:nowrap;">🖨 Print Ticket</button>
-        </div>
-        <div style="font-size:10px;color:#7A9E89;margin-top:6px;text-align:center;">Select a bettor and print their PDF receipt</div>
-      </div>
+
+      <!-- 1. TOTE BOARD — leads the screen -->
       <div id="tote-board">
         <div class="tote-eyebrow">◈ TOTE BOARD — LIVE POOL</div>
         <div class="tote-grid">
@@ -542,10 +534,16 @@
           <div><div class="tote-label">PLACE</div><div class="tote-val" id="tote-place" style="color:#5AAEDD;">$0.00</div></div>
           <div><div class="tote-label">SHOW</div><div class="tote-val" id="tote-show" style="color:#B07FDE;">$0.00</div></div>
         </div>
-        <div class="tote-footer" id="tote-footer">Handle (3%): $0.00 · Net payout pool: $0.00</div>
+        <!-- Pool proportion bar -->
+        <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;margin:8px 0 4px;gap:1px;" id="tote-bar">
+          <div id="tote-bar-win"   style="background:#3DB86E;transition:width .3s;"></div>
+          <div id="tote-bar-place" style="background:#5AAEDD;transition:width .3s;"></div>
+          <div id="tote-bar-show"  style="background:#B07FDE;transition:width .3s;"></div>
+        </div>
+        <div class="tote-footer" id="tote-footer">Handle (0%): $0.00 · Net payout pool: $0.00</div>
       </div>
 
-      <!-- Live Odds — collapsible -->
+      <!-- 2. LIVE ODDS — immediately below tote, collapsible + passcode -->
       <div class="card" id="odds-card" style="display:none;">
         <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleOdds()">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:#8F6E2A;letter-spacing:2px;">📊 LIVE ODDS — ESTIMATED RETURN PER $1 BET</div>
@@ -565,15 +563,51 @@
         </div>
       </div>
 
-<!-- Bet entry moved to Bet Entry tab -->
-      <div class="card" id="wagers-card" style="display:none;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <input type="text" class="bare" id="wager-search" placeholder="🔍  Filter by bettor, team, type or ticket #…" oninput="renderWagers()" style="flex:1;margin-right:10px;" />
-          <button class="btn btn-ghost btn-sm" onclick="printWagersReport()" style="white-space:nowrap;">🖨 Report</button>
+      <!-- 3. WAGER LIST — filter bar is the hero -->
+      <div id="wagers-card" style="display:none;">
+        <!-- Big prominent filter + report button -->
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+          <div style="flex:1;position:relative;">
+            <input type="text" id="wager-search"
+              placeholder="🔍  Search bettor, team, type or ticket…"
+              oninput="renderWagers()"
+              style="width:100%;background:#162219;border:1px solid #2B4033;border-radius:10px;color:#EDE8DC;padding:10px 36px 10px 14px;font-size:14px;outline:none;" />
+            <button id="wager-search-clear" onclick="clearWagerSearch()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#7A9E89;font-size:16px;cursor:pointer;padding:0;">✕</button>
+          </div>
+          <button class="btn btn-ghost" onclick="printWagersReport()" style="white-space:nowrap;padding:10px 14px;">🖨 Report</button>
         </div>
-        <div style="font-size:11px;color:#7A9E89;margin-bottom:8px;" id="wagers-count"></div>
-        <div class="scroll-list" id="wagers-list" style="max-height:440px;"></div>
+        <div style="font-size:11px;color:#7A9E89;margin-bottom:6px;" id="wagers-count"></div>
+        <div id="wagers-list"></div>
       </div>
+
+      <!-- Empty state -->
+      <div id="wagers-empty" style="display:none;">
+        <div class="card" style="text-align:center;padding:32px 20px;border-style:dashed;">
+          <div style="font-size:36px;margin-bottom:10px;">🎰</div>
+          <div style="font-size:14px;color:#EDE8DC;font-weight:700;margin-bottom:6px;">No wagers yet</div>
+          <div style="font-size:12px;color:#7A9E89;">Head to Place Bets to start accepting wagers.</div>
+        </div>
+      </div>
+
+      <!-- 4. BETTOR RECEIPT — collapsible at bottom -->
+      <div style="margin-top:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:8px 4px;" onclick="toggleReceiptPanel()">
+          <div style="font-size:11px;color:#7A9E89;letter-spacing:1px;">🎟 BETTOR TICKET / RECEIPT</div>
+          <span id="receipt-panel-icon" style="color:#7A9E89;font-size:13px;">▼</span>
+        </div>
+        <div id="receipt-panel-body" style="display:none;">
+          <div class="card">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+              <select id="ticket-bettor" style="flex:1;background:#162219;border:1px solid #2B4033;border-radius:8px;color:#EDE8DC;padding:10px 12px;font-size:14px;outline:none;">
+                <option value="">— Select Bettor —</option>
+              </select>
+              <button class="btn btn-ghost" onclick="printTicket()" style="white-space:nowrap;">🖨 Print Ticket</button>
+            </div>
+            <button class="btn btn-ghost" style="width:100%;font-size:12px;padding:7px;" onclick="jumpToPlaceBets()">➕ Add More Bets for This Bettor</button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- RESULTS -->
@@ -801,7 +835,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v19.6: migrate missing house take fields
+        // v19.7: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1570,7 +1604,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v19.6';
+const APP_VERSION = 'v19.7';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
@@ -1948,7 +1982,50 @@ function updateTote() {
   document.getElementById('tote-place').textContent = fmt(place);
   document.getElementById('tote-show').textContent  = fmt(show);
   document.getElementById('tote-footer').textContent = footerText;
+
+  // Update pool proportion bar
+  const poolTotal = win + place + show;
+  if (poolTotal > 0) {
+    const wPct = (win   / poolTotal * 100).toFixed(1);
+    const pPct = (place / poolTotal * 100).toFixed(1);
+    const sPct = (show  / poolTotal * 100).toFixed(1);
+    const wb = document.getElementById('tote-bar-win');
+    const pb = document.getElementById('tote-bar-place');
+    const sb = document.getElementById('tote-bar-show');
+    if (wb) wb.style.width = wPct + '%';
+    if (pb) pb.style.width = pPct + '%';
+    if (sb) sb.style.width = sPct + '%';
+  }
+
   updateOdds();
+}
+
+function toggleReceiptPanel() {
+  const body = document.getElementById('receipt-panel-body');
+  const icon = document.getElementById('receipt-panel-icon');
+  if (!body) return;
+  const open = body.style.display === 'none';
+  body.style.display = open ? '' : 'none';
+  if (icon) icon.textContent = open ? '▲' : '▼';
+}
+
+function clearWagerSearch() {
+  const el = document.getElementById('wager-search');
+  const clr = document.getElementById('wager-search-clear');
+  if (el) el.value = '';
+  if (clr) clr.style.display = 'none';
+  renderWagers();
+}
+
+function jumpToPlaceBets() {
+  // Copy selected bettor from ticket-bettor to entry-bettor and switch tab
+  const tickSel  = document.getElementById('ticket-bettor');
+  const bettorId = tickSel ? tickSel.value : '';
+  showTab('entry');
+  if (bettorId) {
+    const entrySel = document.getElementById('entry-bettor');
+    if (entrySel) { entrySel.value = bettorId; loadEntrySheet(); }
+  }
 }
 
 
@@ -2209,12 +2286,26 @@ const TYPE_LABEL = { win: 'WIN', place: 'PLACE', show: 'SHOW' };
 const COMBO_LABEL = { 'win-place': 'WIN+PLACE', 'win-place-show': 'WIN+PLACE+SHOW' };
 
 function renderWagers() {
-  const card  = document.getElementById('wagers-card');
-  const list  = document.getElementById('wagers-list');
-  const count = document.getElementById('wagers-count');
-  if (!state.bets.length) { card.style.display = 'none'; return; }
-  card.style.display = '';
-  const search = (document.getElementById('wager-search').value || '').toLowerCase();
+  const card    = document.getElementById('wagers-card');
+  const list    = document.getElementById('wagers-list');
+  const count   = document.getElementById('wagers-count');
+  const emptyEl = document.getElementById('wagers-empty');
+  if (!list) return;
+
+  if (!state.bets.length) {
+    if (card)    card.style.display    = 'none';
+    if (emptyEl) emptyEl.style.display = '';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (card)    card.style.display    = '';
+
+  const searchEl = document.getElementById('wager-search');
+  const search   = (searchEl ? searchEl.value : '').toLowerCase();
+
+  // Show/hide clear button
+  const clrBtn = document.getElementById('wager-search-clear');
+  if (clrBtn) clrBtn.style.display = search ? '' : 'none';
 
   const seen = new Set();
   const groups = [];
@@ -2242,31 +2333,38 @@ function renderWagers() {
     return nameA.localeCompare(nameB);
   });
 
-  count.textContent = state.bets.length + ' wagers total (' + groups.length + ' entries)';
+  if (count) count.textContent = filtered.length + ' of ' + state.bets.length + ' wagers' + (search ? ' matching "' + search + '"' : '');
 
+  // Compact rows — 2 lines max
   list.innerHTML = filtered.map(g => {
-    const bName  = bettorById(g.rep.bettorId)?.name || '?';
-    const tName  = teamName(g.rep.teamId);
-    const ref    = g.rep.ticketRef || '';
-    const typeDisplay = g.isCombo
-      ? '<span style="color:#D4A843;font-weight:700;font-size:11px;">' + (COMBO_LABEL[g.comboType]||g.comboType) + '</span>'
-      : '<span style="color:' + (TYPE_COLOR[g.rep.type]||'#EDE8DC') + ';font-weight:700;font-size:11px;">' + (TYPE_LABEL[g.rep.type]||g.rep.type.toUpperCase()) + '</span>';
+    const bName = bettorById(g.rep.bettorId)?.name || '?';
+    const tName = teamName(g.rep.teamId);
+    const ref   = g.rep.ticketRef || '';
+    const type  = g.comboType || g.rep.type;
+    const color = g.isCombo ? '#D4A843' : (TYPE_COLOR[g.rep.type] || '#EDE8DC');
+    const typeLabel = g.isCombo
+      ? (COMBO_LABEL[g.comboType] || g.comboType)
+      : (TYPE_LABEL[g.rep.type] || g.rep.type.toUpperCase());
+    const locked = g.rep.locked || ref;
     const removeId = g.isCombo ? (g.rep.comboGroupId||g.rep.id) : g.rep.id;
-    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid #2B4033;">' +
+
+    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid #1E2E23;">' +
       '<div style="flex:1;min-width:0;">' +
-        '<div style="font-size:13px;font-weight:600;color:#EDE8DC;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(bName) + '</div>' +
-        '<div style="font-size:11px;color:#7A9E89;">' + esc(tName) + (ref?' · <span style="color:#D4A843;">'+esc(ref)+'</span>':'') + '</div>' +
-      '</div>' +
-      '<div style="display:flex;align-items:center;gap:10px;">' +
-        '<div style="text-align:right;">' +
-          typeDisplay +
-          '<div style="font-size:12px;color:#EDE8DC;">$' + g.total + '</div>' +
+        '<div style="font-size:13px;font-weight:700;color:#EDE8DC;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(bName) + '</div>' +
+        '<div style="font-size:11px;color:#7A9E89;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
+          esc(tName) +
+          (ref ? ' · <span style="color:#D4A843;font-weight:700;">' + esc(ref) + '</span>' : '') +
         '</div>' +
-        '<button class="btn btn-danger" style="font-size:11px;padding:4px 8px;" onclick="removeBet(\'' + removeId + '\')">✕</button>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' +
+        '<span style="color:' + color + ';font-weight:700;font-size:11px;">' + typeLabel + '</span>' +
+        '<span style="font-size:13px;font-weight:800;color:#EDE8DC;">' + fmt(g.total) + '</span>' +
+        '<button class="btn btn-danger" style="font-size:10px;padding:3px 7px;" onclick="removeBet(\'' + removeId + '\')">' + (locked ? '🔒' : '✕') + '</button>' +
       '</div>' +
     '</div>';
   }).join('');
 }
+
 
 function printWagersReport() {
   const ev     = activeEvent();
