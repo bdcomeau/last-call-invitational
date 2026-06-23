@@ -207,7 +207,7 @@
   </div>
   <!-- Help button + version — fixed top right -->
   <div id="help-btn-wrap" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:10px;z-index:10000;display:flex;align-items:center;gap:8px;">
-    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v19.9</span>
+    <span id="header-version" style="font-size:13px;color:#D4A843;letter-spacing:1px;font-family:Barlow Condensed,sans-serif;font-weight:700;opacity:0.85;">v20.0</span>
     <button onclick="showHelp()" style="width:26px;height:26px;border-radius:50%;background:#D4A843;color:#111;border:none;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">?</button>
   </div>
 
@@ -736,6 +736,10 @@
 
       </div>
 
+    </div>
+    </div>
+    </div><!-- end screen-results -->
+
 
   <div id="tabbar">
     <button onclick="showTab('events')"><span class="tab-icon">📅</span><span class="tab-label">EVENTS</span></button>
@@ -859,7 +863,7 @@ function load() {
         if (!ev.bets) ev.bets = [];
         if (!ev.placements) ev.placements = { p1:'', p2:'', p3:'' };
         if (!ev.nextTicketNum) ev.nextTicketNum = 1;
-        // v19.9: migrate missing house take fields
+        // v20.0: migrate missing house take fields
         if (ev.handleMode === undefined) ev.handleMode = 'pct';
         if (ev.handleFlat === undefined) ev.handleFlat = 0;
         if (ev.handlePct === undefined) ev.handlePct = 0;
@@ -1628,7 +1632,7 @@ function updatePayoutModeUI() {
 }
 
 
-const APP_VERSION = 'v19.9';
+const APP_VERSION = 'v20.0';
 
 function checkForUpdate() {
   // Fetch the live index.html and look for the version string
